@@ -1,0 +1,7 @@
+# c. math — exclude large folders from Cursor indexing
+c. math/reference_implementations/
+c. math/archive/
+c. math/cllm_old_backup/
+c. math/deep_reading_analysis/
+c. math/thesis/
+c. math/php/

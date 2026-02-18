@@ -1,0 +1,27 @@
+# Simple Apache config for React SPA
+
+# Disable directory listing
+Options -Indexes
+
+# Set default document
+DirectoryIndex dist/index.html
+
+# Rewrite rules
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /trading/
+  
+  # If request is for root, serve dist/index.html
+  RewriteRule ^$ dist/index.html [L]
+  
+  # If file exists in dist/, serve it directly
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{DOCUMENT_ROOT}/trading/dist/%{REQUEST_URI} -f
+  RewriteRule ^(.*)$ dist/$1 [L]
+  
+  # SPA fallback - serve dist/index.html for all other requests
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ dist/index.html [L]
+</IfModule>

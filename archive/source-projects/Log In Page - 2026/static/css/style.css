@@ -1,0 +1,352 @@
+:root {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #121212;
+  --text-primary: #f3f4f6;
+  --text-secondary: rgba(156, 163, 175, 0.9);
+  --accent-blue: #3b82f6;
+  --accent-blue-muted: #60a5fa;
+  --accent-grey: #6b7280;
+  --accent-grey-light: #9ca3af;
+  --dot-grey-dark: #374151;
+  --dot-grey: #4b5563;
+  --dot-grey-light: #6b7280;
+  --dot-blue-muted: #3b82f6;
+  --dot-blue-subtle: #1e3a5f;
+  --card-bg: rgba(18, 18, 18, 0.95);
+  --input-bg: rgba(0, 0, 0, 0.4);
+  --error-bg: rgba(107, 114, 128, 0.2);
+  --success-bg: rgba(59, 130, 246, 0.15);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+.page-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle grid background - neutral greys and muted blues */
+.page-wrapper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(circle at 10% 20%, var(--dot-grey) 2px, transparent 2px),
+    radial-gradient(circle at 25% 35%, var(--dot-grey-light) 2px, transparent 2px),
+    radial-gradient(circle at 40% 10%, var(--dot-grey-dark) 2px, transparent 2px),
+    radial-gradient(circle at 55% 45%, var(--dot-blue-muted) 2px, transparent 2px),
+    radial-gradient(circle at 70% 25%, var(--dot-grey) 2px, transparent 2px),
+    radial-gradient(circle at 85% 60%, var(--dot-grey-light) 2px, transparent 2px),
+    radial-gradient(circle at 15% 70%, var(--dot-grey-dark) 2px, transparent 2px),
+    radial-gradient(circle at 90% 15%, var(--dot-blue-subtle) 2px, transparent 2px),
+    radial-gradient(circle at 30% 85%, var(--dot-grey) 2px, transparent 2px),
+    radial-gradient(circle at 60% 55%, var(--dot-grey-light) 2px, transparent 2px),
+    radial-gradient(circle at 5% 50%, var(--dot-grey-dark) 2px, transparent 2px),
+    radial-gradient(circle at 75% 80%, var(--dot-blue-muted) 2px, transparent 2px),
+    radial-gradient(circle at 45% 30%, var(--dot-grey) 2px, transparent 2px),
+    radial-gradient(circle at 20% 95%, var(--dot-grey-light) 2px, transparent 2px),
+    radial-gradient(circle at 95% 40%, var(--dot-grey-dark) 2px, transparent 2px);
+  background-size: 
+    120px 120px,
+    100px 100px,
+    140px 140px,
+    110px 110px,
+    130px 130px,
+    115px 115px,
+    125px 125px,
+    105px 105px,
+    135px 135px,
+    108px 108px,
+    118px 118px,
+    122px 122px,
+    112px 112px,
+    128px 128px,
+    102px 102px;
+  background-position: 0 0, 20px 10px, 40px 30px, 60px 5px, 80px 25px, 10px 50px, 50px 60px, 30px 20px, 70px 70px, 15px 90px, 90px 40px, 5px 15px, 25px 75px, 55px 85px, 85px 55px;
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+/* Additional grid overlay - low density */
+.page-wrapper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(circle at 22% 12%, var(--dot-grey) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 67% 38%, var(--dot-blue-subtle) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 12% 62%, var(--dot-grey-light) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 88% 88%, var(--dot-grey-dark) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 50% 5%, var(--dot-grey) 1.5px, transparent 1.5px);
+  background-size: 80px 80px, 90px 90px, 85px 85px, 95px 95px, 88px 88px;
+  background-position: 0 0, 15px 20px, 30px 10px, 10px 40px, 50px 30px;
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+.auth-card,
+.dashboard-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 400px;
+  padding: 2rem;
+  background: var(--card-bg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.auth-path {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+}
+
+.auth-title {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.flash-messages {
+  margin-bottom: 1rem;
+}
+
+.flash-message {
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.flash-message:last-child {
+  margin-bottom: 0;
+}
+
+.flash-error {
+  background: var(--error-bg);
+  border: 1px solid var(--accent-grey);
+  color: var(--accent-grey-light);
+}
+
+.flash-success {
+  background: var(--success-bg);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: var(--accent-blue-muted);
+}
+
+.loading-indicator {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  border: 1px solid rgba(75, 85, 99, 0.3);
+}
+
+.loading-indicator.visible {
+  display: flex;
+}
+
+.loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(75, 85, 99, 0.3);
+  border-top-color: var(--accent-blue);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.loading-progress {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.loading-progress-bar {
+  height: 100%;
+  width: 30%;
+  background: linear-gradient(90deg, var(--accent-grey), var(--accent-blue));
+  border-radius: 2px;
+  animation: progressIndeterminate 1.2s ease-in-out infinite;
+}
+
+@keyframes progressIndeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(150%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.auth-form-wrapper.submitting .loading-indicator {
+  display: flex;
+}
+
+.auth-form-wrapper.submitting .form-group,
+.auth-form-wrapper.submitting .btn-primary {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--accent-grey-light);
+}
+
+.form-group input {
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--input-bg);
+  border: 1px solid rgba(75, 85, 99, 0.5);
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input::placeholder {
+  color: rgba(156, 163, 175, 0.6);
+}
+
+.form-group input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.btn-primary {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: white;
+  background: var(--accent-blue);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, filter 0.2s;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.15);
+}
+
+.btn-primary:active {
+  filter: brightness(0.95);
+}
+
+.btn-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.btn-secondary {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: var(--accent-blue-muted);
+  background: transparent;
+  border: 1px solid rgba(75, 85, 99, 0.5);
+  border-radius: 6px;
+  text-decoration: none;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.btn-secondary:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: var(--accent-blue);
+}
+
+.auth-switch {
+  margin: 1.5rem 0 0 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.auth-switch a {
+  color: var(--accent-blue-muted);
+  text-decoration: none;
+}
+
+.auth-switch a:hover {
+  text-decoration: underline;
+}
+
+.dashboard-message {
+  margin: 0 0 1rem 0;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 480px) {
+  .page-wrapper {
+    padding: 1rem;
+  }
+
+  .auth-card,
+  .dashboard-card {
+    padding: 1.5rem;
+    max-width: 100%;
+  }
+
+  .auth-title {
+    font-size: 1.5rem;
+  }
+}

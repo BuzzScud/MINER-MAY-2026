@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard Diagnostic Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #0d1117;
+            color: #e5e7eb;
+            padding: 20px;
+        }
+        .test-section {
+            background: #161b22;
+            border: 1px solid #21262d;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 6px;
+        }
+        .success { color: #3fb950; }
+        .error { color: #f85149; }
+        .warning { color: #d29922; }
+        h2 { color: #38bdf8; }
+        pre {
+            background: #0d1117;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            background: #238636;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2ea043;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 RocketBot Dashboard Diagnostic</h1>
+    
+    <div class="test-section">
+        <h2>1. Server Status</h2>
+        <div id="server-status">Testing...</div>
+        <button onclick="testServer()">Retest Server</button>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Static Files</h2>
+        <div id="static-files">Testing...</div>
+        <button onclick="testStaticFiles()">Retest Files</button>
+    </div>
+
+    <div class="test-section">
+        <h2>3. WebSocket Connection</h2>
+        <div id="websocket-status">Testing...</div>
+        <button onclick="testWebSocket()">Retest WebSocket</button>
+    </div>
+
+    <div class="test-section">
+        <h2>4. API Endpoints</h2>
+        <div id="api-status">Testing...</div>
+        <button onclick="testAPI()">Retest API</button>
+    </div>
+
+    <div class="test-section">
+        <h2>5. Console Errors</h2>
+        <div id="console-errors">
+            <p>Check your browser console (F12) for any red errors.</p>
+            <p>Common errors to look for:</p>
+            <ul>
+                <li>404 Not Found errors for CSS/JS files</li>
+                <li>CORS errors</li>
+                <li>JavaScript syntax errors</li>
+                <li>WebSocket connection failures</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>6. Network Tab Check</h2>
+        <div id="network-info">
+            <p>Open DevTools (F12) → Network tab and look for:</p>
+            <ul>
+                <li><strong>/static/css/output.css</strong> - Should be <span class="success">200 OK</span></li>
+                <li><strong>/static/js/preline.js</strong> - Should be <span class="success">200 OK</span></li>
+                <li><strong>/static/js/dashboard.js</strong> - Should be <span class="success">200 OK</span></li>
+                <li><strong>/socket.io/</strong> - WebSocket connection</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results Summary</h2>
+        <pre id="results-summary"></pre>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        let testResults = {};
+
+        // Test 1: Server Status
+        async function testServer() {
+            const statusDiv = document.getElementById('server-status');
+            statusDiv.innerHTML = '<span class="warning">Testing server...</span>';
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8080/', {
+                    method: 'GET',
+                    cache: 'no-cache'
+                });
+                
+                if (response.ok) {
+                    const html = await response.text();
+                    const hasTitle = html.includes('RocketBot');
+                    const hasSocket = html.includes('socket.io');
+                    const hasDashboard = html.includes('dashboard.js');
+                    
+                    testResults.server = {
+                        status: response.status,
+                        ok: true,
+                        hasTitle,
+                        hasSocket,
+                        hasDashboard
+                    };
+                    
+                    statusDiv.innerHTML = `
+                        <span class="success">✓ Server is running (${response.status})</span><br>
+                        <span class="${hasTitle ? 'success' : 'error'}">${hasTitle ? '✓' : '✗'} Page title found</span><br>
+                        <span class="${hasSocket ? 'success' : 'error'}">${hasSocket ? '✓' : '✗'} Socket.IO script included</span><br>
+                        <span class="${hasDashboard ? 'success' : 'error'}">${hasDashboard ? '✓' : '✗'} Dashboard.js included</span>
+                    `;
+                } else {
+                    testResults.server = { status: response.status, ok: false };
+                    statusDiv.innerHTML = `<span class="error">✗ Server returned ${response.status}</span>`;
+                }
+            } catch (error) {
+                testResults.server = { error: error.message, ok: false };
+                statusDiv.innerHTML = `<span class="error">✗ Cannot connect to server: ${error.message}</span>`;
+            }
+            updateSummary();
+        }
+
+        // Test 2: Static Files
+        async function testStaticFiles() {
+            const filesDiv = document.getElementById('static-files');
+            filesDiv.innerHTML = '<span class="warning">Testing static files...</span>';
+            
+            const files = [
+                '/static/css/output.css',
+                '/static/js/preline.js',
+                '/static/js/dashboard.js'
+            ];
+            
+            let results = [];
+            testResults.staticFiles = {};
+            
+            for (const file of files) {
+                try {
+                    const response = await fetch('http://127.0.0.1:8080' + file, {
+                        method: 'HEAD',
+                        cache: 'no-cache'
+                    });
+                    
+                    const status = response.status;
+                    const ok = response.ok;
+                    testResults.staticFiles[file] = { status, ok };
+                    
+                    const className = ok ? 'success' : 'error';
+                    const icon = ok ? '✓' : '✗';
+                    results.push(`<span class="${className}">${icon} ${file} - ${status}</span>`);
+                } catch (error) {
+                    testResults.staticFiles[file] = { error: error.message, ok: false };
+                    results.push(`<span class="error">✗ ${file} - ${error.message}</span>`);
+                }
+            }
+            
+            filesDiv.innerHTML = results.join('<br>');
+            updateSummary();
+        }
+
+        // Test 3: WebSocket
+        function testWebSocket() {
+            const wsDiv = document.getElementById('websocket-status');
+            wsDiv.innerHTML = '<span class="warning">Testing WebSocket connection...</span>';
+            
+            try {
+                const socket = io('http://127.0.0.1:8080', {
+                    transports: ['websocket', 'polling']
+                });
+                
+                const timeout = setTimeout(() => {
+                    testResults.websocket = { ok: false, error: 'Connection timeout' };
+                    wsDiv.innerHTML = '<span class="error">✗ WebSocket connection timeout (10s)</span>';
+                    socket.close();
+                    updateSummary();
+                }, 10000);
+                
+                socket.on('connect', () => {
+                    clearTimeout(timeout);
+                    testResults.websocket = { ok: true, connected: true };
+                    wsDiv.innerHTML = `
+                        <span class="success">✓ WebSocket connected</span><br>
+                        <span class="success">Socket ID: ${socket.id}</span>
+                    `;
+                    updateSummary();
+                    
+                    // Listen for initial state
+                    socket.on('state', (data) => {
+                        wsDiv.innerHTML += `<br><span class="success">✓ Received initial state</span>`;
+                        console.log('Initial state:', data);
+                    });
+                });
+                
+                socket.on('connect_error', (error) => {
+                    clearTimeout(timeout);
+                    testResults.websocket = { ok: false, error: error.message };
+                    wsDiv.innerHTML = `<span class="error">✗ WebSocket connection error: ${error.message}</span>`;
+                    updateSummary();
+                });
+                
+                socket.on('disconnect', (reason) => {
+                    wsDiv.innerHTML += `<br><span class="warning">⚠ Disconnected: ${reason}</span>`;
+                });
+                
+            } catch (error) {
+                testResults.websocket = { ok: false, error: error.message };
+                wsDiv.innerHTML = `<span class="error">✗ WebSocket error: ${error.message}</span>`;
+                updateSummary();
+            }
+        }
+
+        // Test 4: API Endpoints
+        async function testAPI() {
+            const apiDiv = document.getElementById('api-status');
+            apiDiv.innerHTML = '<span class="warning">Testing API endpoints...</span>';
+            
+            const endpoints = [
+                { url: '/api/settings', method: 'GET' },
+                { url: '/api/status', method: 'GET' }
+            ];
+            
+            let results = [];
+            testResults.api = {};
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch('http://127.0.0.1:8080' + endpoint.url, {
+                        method: endpoint.method,
+                        cache: 'no-cache'
+                    });
+                    
+                    const status = response.status;
+                    const ok = response.ok;
+                    
+                    if (ok) {
+                        const data = await response.json();
+                        testResults.api[endpoint.url] = { status, ok, hasData: !!data };
+                        results.push(`<span class="success">✓ ${endpoint.url} - ${status}</span>`);
+                    } else {
+                        testResults.api[endpoint.url] = { status, ok };
+                        results.push(`<span class="error">✗ ${endpoint.url} - ${status}</span>`);
+                    }
+                } catch (error) {
+                    testResults.api[endpoint.url] = { error: error.message, ok: false };
+                    results.push(`<span class="error">✗ ${endpoint.url} - ${error.message}</span>`);
+                }
+            }
+            
+            apiDiv.innerHTML = results.join('<br>');
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const summary = document.getElementById('results-summary');
+            summary.textContent = JSON.stringify(testResults, null, 2);
+        }
+
+        // Run all tests on load
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Starting diagnostic tests...');
+            testServer();
+            setTimeout(testStaticFiles, 500);
+            setTimeout(testWebSocket, 1000);
+            setTimeout(testAPI, 1500);
+        });
+
+        // Capture console errors
+        window.addEventListener('error', (event) => {
+            console.error('Page error:', event.error);
+            const errDiv = document.getElementById('console-errors');
+            errDiv.innerHTML += `<br><span class="error">✗ ${event.error.message}</span>`;
+        });
+    </script>
+</body>
+</html>

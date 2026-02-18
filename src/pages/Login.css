@@ -1,0 +1,253 @@
+/* Archive-style dark theme and defrag background for Login/Register */
+.login-page-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+  background-color: #0a0a0a;
+}
+
+.login-page-wrapper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 10% 20%, #4b5563 2px, transparent 2px),
+    radial-gradient(circle at 25% 35%, #6b7280 2px, transparent 2px),
+    radial-gradient(circle at 40% 10%, #374151 2px, transparent 2px),
+    radial-gradient(circle at 55% 45%, #3b82f6 2px, transparent 2px),
+    radial-gradient(circle at 70% 25%, #4b5563 2px, transparent 2px),
+    radial-gradient(circle at 85% 60%, #6b7280 2px, transparent 2px),
+    radial-gradient(circle at 15% 70%, #374151 2px, transparent 2px),
+    radial-gradient(circle at 90% 15%, #1e3a5f 2px, transparent 2px),
+    radial-gradient(circle at 30% 85%, #4b5563 2px, transparent 2px),
+    radial-gradient(circle at 60% 55%, #6b7280 2px, transparent 2px);
+  background-size: 120px 120px, 100px 100px, 140px 140px, 110px 110px, 130px 130px, 115px 115px, 125px 125px, 105px 105px, 135px 135px, 108px 108px;
+  background-position: 0 0, 20px 10px, 40px 30px, 60px 5px, 80px 25px, 10px 50px, 50px 60px, 30px 20px, 70px 70px, 15px 90px;
+  animation: login-bg-twinkle 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes login-bg-twinkle {
+  0%, 100% { opacity: 0.14; }
+  25% { opacity: 0.22; }
+  50% { opacity: 0.12; }
+  75% { opacity: 0.2; }
+}
+
+.login-page-wrapper::after {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(75, 85, 99, 0.15) 1px, transparent 1px),
+    radial-gradient(circle at 80% 20%, rgba(107, 114, 128, 0.12) 1px, transparent 1px),
+    radial-gradient(circle at 50% 80%, rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+    radial-gradient(circle at 10% 60%, rgba(55, 65, 81, 0.14) 1px, transparent 1px),
+    radial-gradient(circle at 90% 70%, rgba(75, 85, 99, 0.11) 1px, transparent 1px);
+  background-size: 200px 200px, 180px 180px, 220px 220px, 160px 160px, 190px 190px;
+  background-position: 0 0, 50px 30px, 100px 80px, 30px 100px, 120px 50px;
+  animation: login-bg-drift 50s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes login-bg-drift {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(80px, 40px); }
+  50% { transform: translate(40px, 80px); }
+  75% { transform: translate(-40px, 40px); }
+}
+
+.login-auth-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 400px;
+  padding: 2rem;
+  background: rgba(18, 18, 18, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.login-auth-path {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.75rem;
+  color: rgba(156, 163, 175, 0.9);
+  letter-spacing: 0.05em;
+}
+
+.login-auth-title {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #f3f4f6;
+}
+
+.login-flash-messages {
+  margin-bottom: 1rem;
+}
+
+.login-flash-message {
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.login-flash-error {
+  background: rgba(107, 114, 128, 0.2);
+  border: 1px solid #6b7280;
+  color: #9ca3af;
+}
+
+.login-auth-form-wrapper.submitting .login-form-group,
+.login-auth-form-wrapper.submitting .login-btn-primary {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.login-loading-indicator {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  border: 1px solid rgba(75, 85, 99, 0.3);
+}
+
+.login-loading-indicator.visible {
+  display: flex;
+}
+
+.login-loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(75, 85, 99, 0.3);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: login-spin 0.8s linear infinite;
+}
+
+@keyframes login-spin {
+  to { transform: rotate(360deg); }
+}
+
+.login-loading-text {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(156, 163, 175, 0.9);
+}
+
+.login-loading-progress {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.login-loading-progress-bar {
+  height: 100%;
+  width: 30%;
+  background: linear-gradient(90deg, #6b7280, #3b82f6);
+  border-radius: 2px;
+  animation: login-progress 1.2s ease-in-out infinite;
+}
+
+@keyframes login-progress {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(150%); }
+  100% { transform: translateX(-100%); }
+}
+
+.login-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.login-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.login-form-group label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.login-form-group input {
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-family: inherit;
+  color: #f3f4f6;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(75, 85, 99, 0.5);
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.login-form-group input::placeholder {
+  color: rgba(156, 163, 175, 0.6);
+}
+
+.login-form-group input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.login-btn-primary {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: white;
+  background: #3b82f6;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.login-btn-primary:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.login-btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.login-auth-switch {
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  color: rgba(156, 163, 175, 0.9);
+}
+
+.login-auth-switch a {
+  color: #60a5fa;
+  text-decoration: none;
+}
+
+.login-auth-switch a:hover {
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-page-wrapper::before,
+  .login-page-wrapper::after {
+    animation: none;
+  }
+  .login-page-wrapper::before {
+    opacity: 0.18;
+  }
+}

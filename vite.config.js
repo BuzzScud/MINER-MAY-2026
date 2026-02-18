@@ -1,0 +1,100 @@
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig(({ command }) => ({
+  plugins: [react()],
+  base: command === 'serve' ? '/' : '/trading/dist/',  // root in dev, subdirectory in production
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    chunkSizeWarningLimit: 1500,
+    modulePreload: false,
+    rollupOptions: {
+      output: {
+        // Bundle all vendor code together to avoid React hooks loading issues
+        manualChunks: (id) => {
+          if (id.includes('node_modules')) {
+            // Keep preline separate (it's loaded dynamically)
+            if (id.includes('preline')) {
+              return 'preline';
+            }
+            // Bundle all other dependencies together
+            return 'vendor';
+          }
+        },
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]',
+      },
+    },
+  },
+  server: {
+    port: 5173,
+    strictPort: true,
+    open: false,
+    proxy: {
+      '/api/yahoo': {
+        target: 'https://query1.finance.yahoo.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/yahoo/, ''),
+        secure: true,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+      },
+      '/api/quote': {
+        target: 'https://query1.finance.yahoo.com',
+        changeOrigin: true,
+        rewrite: (path) => {
+          const match = path.match(/^\/api\/quote\/([^?]+)(\?.*)?$/);
+          if (match) {
+            const symbol = match[1];
+            const queryParams = new URLSearchParams(match[2]?.substring(1) || '');
+            const period = queryParams.get('period') || '1d';
+            const periodMap = {
+              'ytd': { range: 'ytd', interval: '1d' },
+              '1d': { range: '1d', interval: '5m' },
+              '5d': { range: '5d', interval: '15m' },
+              '1mo': { range: '1mo', interval: '1d' },
+              '3mo': { range: '3mo', interval: '1d' },
+              '6mo': { range: '6mo', interval: '1d' },
+              '1y': { range: '1y', interval: '1wk' },
+            };
+            const { range, interval } = periodMap[period] || periodMap['1d'];
+            return `/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`;
+          }
+          return path;
+        },
+        secure: true,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        },
+      },
+      '/api/auth': { target: 'http://localhost:4000', changeOrigin: true },
+      '/api/data': { target: 'http://localhost:4000', changeOrigin: true },
+      '/api/admin': { target: 'http://localhost:4000', changeOrigin: true },
+      '/api/miner': {
+        target: 'http://127.0.0.1:5001',
+        changeOrigin: false,
+      },
+      // QuantBot trading bot backend (Flask-SocketIO on port 8080)
+      '/socket.io': {
+        target: 'http://127.0.0.1:8080',
+        changeOrigin: false,
+        ws: true,
+      },
+      '/api/state': { target: 'http://127.0.0.1:8080', changeOrigin: false },
+      '/api/prices': { target: 'http://127.0.0.1:8080', changeOrigin: false },
+      '/api/mode': { target: 'http://127.0.0.1:8080', changeOrigin: false },
+      '/api/bot': { target: 'http://127.0.0.1:8080', changeOrigin: false },
+      '/api/symbols': { target: 'http://127.0.0.1:8080', changeOrigin: false },
+      '/api/timeframe': { target: 'http://127.0.0.1:8080', changeOrigin: false },
+      '/api/feed': { target: 'http://127.0.0.1:8080', changeOrigin: false },
+      '/api/settings': { target: 'http://127.0.0.1:8080', changeOrigin: false },
+      '/api/strategies': { target: 'http://127.0.0.1:8080', changeOrigin: false },
+      '/api/strategy': { target: 'http://127.0.0.1:8080', changeOrigin: false },
+      '/api/broker': { target: 'http://127.0.0.1:8080', changeOrigin: false },
+      '/api/backtest': { target: 'http://127.0.0.1:8080', changeOrigin: false },
+    },
+  },
+}))

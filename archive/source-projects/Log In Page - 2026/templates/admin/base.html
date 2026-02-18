@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body class="admin-body">
+    <div class="admin-layout">
+        <aside class="admin-sidebar" id="adminSidebar">
+            <div class="admin-sidebar-header">
+                <span class="admin-logo">Admin</span>
+            </div>
+            <nav class="admin-nav">
+                <a href="{{ url_for('admin.index') }}" class="admin-nav-link">Dashboard</a>
+                <a href="{{ url_for('admin.users') }}" class="admin-nav-link">Users</a>
+                {% for panel in admin_panels %}
+                    {% if panel.id not in ['index', 'users'] %}
+                        <a href="{{ url_for('admin.' + panel.id) }}" class="admin-nav-link">{{ panel.name }}</a>
+                    {% endif %}
+                {% endfor %}
+            </nav>
+            <div class="admin-sidebar-footer">
+                <a href="{{ url_for('logout') }}" class="admin-nav-link admin-nav-logout">Log out</a>
+            </div>
+        </aside>
+        <button class="admin-sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">&#9776;</button>
+        <main class="admin-main">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

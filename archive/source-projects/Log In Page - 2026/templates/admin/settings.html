@@ -1,0 +1,221 @@
+{% extends "admin/base.html" %}
+{% block title %}Settings - Admin{% endblock %}
+{% block content %}
+<div class="admin-content">
+    <p class="admin-path">/admin/settings</p>
+    <h1 class="admin-title">Settings</h1>
+    <div class="admin-tabs">
+        <button type="button" class="admin-tab active" data-tab="config">Config</button>
+        <button type="button" class="admin-tab" data-tab="database">Database</button>
+        <button type="button" class="admin-tab" data-tab="connection">Connection</button>
+    </div>
+    <div id="tab-config" class="admin-tab-pane active">
+        <div class="admin-settings-grid">
+            {% for item in config_items %}
+            <div class="admin-metric-card">
+                <span class="admin-metric-label">{{ item.label }}</span>
+                <span class="admin-metric-value">{{ item.value }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div id="tab-database" class="admin-tab-pane">
+        <div class="admin-db-status admin-metric-card">
+            <span class="admin-metric-label">Status</span>
+            <span id="dbStatusValue" class="admin-metric-value admin-db-status-disconnected">
+                <span class="admin-db-dot"></span> Checking...
+            </span>
+            <div class="admin-db-actions">
+                <button type="button" id="dbTestBtn" class="btn-primary btn-sm">Test Connection</button>
+                <span id="dbTestResult" class="admin-db-test-result"></span>
+            </div>
+        </div>
+        <div class="admin-db-chart-card admin-metric-card">
+            <span class="admin-metric-label">Database latency</span>
+            <span class="admin-metric-subtext">Response time (ms). Updates every 2 seconds.</span>
+            <div class="admin-db-chart-wrap">
+                <canvas id="dbLatencyChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div id="tab-connection" class="admin-tab-pane">
+        <p class="admin-connection-description">
+            Use the code below to integrate this admin portal into your main Flask application.
+            Copy and paste into your app's entry point.
+        </p>
+        <div class="admin-code-block">
+            <div class="admin-code-header">
+                <span>Integration code</span>
+                <button type="button" class="btn-copy" id="copyCodeBtn" title="Copy to clipboard">Copy</button>
+            </div>
+            <textarea id="integrationCode" class="admin-code-field" readonly>{{ integration_code }}</textarea>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function () {
+  var dbTestUrl = "{{ url_for('admin.db_test') }}";
+  var latencySamples = [];
+  var maxSamples = 60;
+  var pollInterval = null;
+  var dbChart = null;
+
+  var tabs = document.querySelectorAll(".admin-tab");
+  var panes = document.querySelectorAll(".admin-tab-pane");
+  tabs.forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      var targetId = "tab-" + tab.getAttribute("data-tab");
+      tabs.forEach(function (t) { t.classList.remove("active"); });
+      panes.forEach(function (p) {
+        p.classList.remove("active");
+        if (p.id === targetId) p.classList.add("active");
+      });
+      tab.classList.add("active");
+      if (targetId === "tab-database") {
+        startDbPolling();
+      } else {
+        stopDbPolling();
+      }
+    });
+  });
+  var textarea = document.getElementById("integrationCode");
+  var copyBtn = document.getElementById("copyCodeBtn");
+  if (textarea && copyBtn) {
+    copyBtn.addEventListener("click", function () {
+      textarea.select();
+      textarea.setSelectionRange(0, 99999);
+      try {
+        document.execCommand("copy");
+        copyBtn.textContent = "Copied";
+        setTimeout(function () { copyBtn.textContent = "Copy"; }, 1500);
+      } catch (err) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(textarea.value).then(function () {
+            copyBtn.textContent = "Copied";
+            setTimeout(function () { copyBtn.textContent = "Copy"; }, 1500);
+          });
+        }
+      }
+    });
+  }
+
+  function updateDbStatus(connected) {
+    var el = document.getElementById("dbStatusValue");
+    if (!el) return;
+    el.classList.remove("admin-db-status-connected", "admin-db-status-disconnected");
+    el.classList.add(connected ? "admin-db-status-connected" : "admin-db-status-disconnected");
+    el.innerHTML = "<span class=\"admin-db-dot\"></span> " + (connected ? "Connected" : "Not connected");
+  }
+
+  function fetchDbTest() {
+    return fetch(dbTestUrl).then(function (r) { return r.json(); });
+  }
+
+  function addLatencySample(latencyMs) {
+    if (latencyMs == null) return;
+    latencySamples.push(latencyMs);
+    if (latencySamples.length > maxSamples) latencySamples.shift();
+    if (dbChart) {
+      dbChart.data.labels = latencySamples.map(function (_, i) { return i + 1; });
+      dbChart.data.datasets[0].data = latencySamples;
+      dbChart.update("none");
+    }
+  }
+
+  function initDbChart() {
+    var ctx = document.getElementById("dbLatencyChart");
+    if (!ctx || dbChart) return;
+    dbChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
+          label: "Latency (ms)",
+          data: [],
+          borderColor: "#60a5fa",
+          backgroundColor: "rgba(96, 165, 250, 0.1)",
+          fill: true,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: {
+            grid: { color: "rgba(255,255,255,0.06)" },
+            ticks: { color: "#9ca3af", maxTicksLimit: 10 }
+          },
+          y: {
+            grid: { color: "rgba(255,255,255,0.06)" },
+            ticks: { color: "#9ca3af" },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  }
+
+  function startDbPolling() {
+    initDbChart();
+    if (pollInterval) return;
+    function poll() {
+      fetchDbTest().then(function (data) {
+        updateDbStatus(data.connected);
+        addLatencySample(data.latency_ms);
+      }).catch(function () {
+        updateDbStatus(false);
+      });
+    }
+    poll();
+    pollInterval = setInterval(poll, 2000);
+  }
+
+  function stopDbPolling() {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+  }
+
+  var dbTestBtn = document.getElementById("dbTestBtn");
+  var dbTestResult = document.getElementById("dbTestResult");
+  if (dbTestBtn && dbTestResult) {
+    dbTestBtn.addEventListener("click", function () {
+      dbTestBtn.disabled = true;
+      dbTestBtn.textContent = "Testing...";
+      dbTestResult.textContent = "";
+      dbTestResult.className = "admin-db-test-result";
+      fetchDbTest().then(function (data) {
+        updateDbStatus(data.connected);
+        addLatencySample(data.latency_ms);
+        if (data.connected) {
+          dbTestResult.textContent = "Connected (" + data.latency_ms + " ms)";
+          dbTestResult.classList.add("admin-db-test-success");
+        } else {
+          dbTestResult.textContent = data.error || "Connection failed";
+          dbTestResult.classList.add("admin-db-test-error");
+        }
+      }).catch(function (err) {
+        updateDbStatus(false);
+        dbTestResult.textContent = "Request failed: " + (err.message || "Unknown error");
+        dbTestResult.classList.add("admin-db-test-error");
+      }).finally(function () {
+        dbTestBtn.disabled = false;
+        dbTestBtn.textContent = "Test Connection";
+      });
+    });
+  }
+
+  var dbPane = document.getElementById("tab-database");
+  if (dbPane && dbPane.classList.contains("active")) {
+    startDbPolling();
+  }
+  window.addEventListener("beforeunload", stopDbPolling);
+})();
+</script>
+{% endblock %}

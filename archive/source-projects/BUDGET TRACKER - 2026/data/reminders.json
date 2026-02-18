@@ -1,0 +1,74 @@
+[
+  {
+    "id": 1,
+    "title": "Internet / Cable ",
+    "amount": 105,
+    "due_date": "2025-11-27",
+    "category": "Bills & Utilities",
+    "website_url": "https://secure.verizon.com/signin?tid=1000:924390a4-22f2-40d3-81ae-42a717a03c88-2020340&goto=https%3A%2F%2Fwww.verizon.com%3A443%2Fdigital%2Fnsa%2Fsecure%2Fui%2Fbill%2Foverview%2F",
+    "recurring": true,
+    "recurrence_type": "monthly",
+    "is_paid": true,
+    "created_at": "2025-11-27T13:10:38.023766"
+  },
+  {
+    "id": 2,
+    "title": "Phone ",
+    "amount": 75,
+    "due_date": "2025-12-01",
+    "category": "Bills & Utilities",
+    "website_url": "https://account.t-mobile.com/signin/v2/?redirect_uri=https:%2F%2Fwww.t-mobile.com%2Fsignin&scope=TMO_ID_profile%2520associated_lines%2520ban_roles%2520billing_information%2520associated_billing_accounts%2520extended_lines%2520token%2520openid%2520vault%2520role%2520consent&client_id=MYTMO&access_type=ONLINE&response_type=code&approval_prompt=auto&prompt=select_account&state=eyJpbnRlbnQiOiJMb2dpbiIsImJvb2ttYXJrVXJsIjoiaHR0cHM6Ly93d3cudC1tb2JpbGUuY29tL2FjY291bnQvZGFzaGJvYXJkIn0",
+    "recurring": true,
+    "recurrence_type": "monthly",
+    "is_paid": true,
+    "created_at": "2025-11-27T13:11:07.251447"
+  },
+  {
+    "id": 3,
+    "title": "Rent",
+    "amount": 1200,
+    "due_date": "2025-12-10",
+    "category": "Housing",
+    "website_url": "",
+    "recurring": true,
+    "recurrence_type": "monthly",
+    "is_paid": true,
+    "created_at": "2025-11-27T13:11:47.958338"
+  },
+  {
+    "id": 4,
+    "title": "Electric",
+    "amount": 120,
+    "due_date": "2025-11-27",
+    "category": "Bills & Utilities",
+    "website_url": "https://www.fpl.com/my-account/multi-dashboard.html",
+    "recurring": true,
+    "recurrence_type": "monthly",
+    "is_paid": true,
+    "created_at": "2025-11-27T13:12:22.565498"
+  },
+  {
+    "id": 5,
+    "title": "TradingView",
+    "amount": 25,
+    "due_date": "2025-12-19",
+    "category": "Entertainment",
+    "website_url": "https://www.tradingview.com/settings/#subscriptions",
+    "recurring": true,
+    "recurrence_type": "monthly",
+    "is_paid": true,
+    "created_at": "2025-11-27T13:58:03.978910"
+  },
+  {
+    "id": 6,
+    "title": "Car Insurance ",
+    "amount": 250,
+    "due_date": "2025-12-14",
+    "category": "Transportation",
+    "website_url": "https://account.apps.progressive.com/access/login?fd=accountHome",
+    "recurring": true,
+    "recurrence_type": "monthly",
+    "is_paid": false,
+    "created_at": "2025-11-27T14:35:42.918079"
+  }
+]
