@@ -46,7 +46,6 @@ A web application for financial market analysis and projections using advanced m
 │   ├── verify-build.js       # Post-build verification
 │   └── resolve-conflict.sh   # Git conflict resolution
 ├── public/                    # Public static assets
-<｜tool▁call▁end｜><｜tool▁call▁begin｜>
 ├── dist/                      # Build output (gitignored)
 └── [config files]             # Root config files (package.json, vite.config.js, etc.)
 ```
