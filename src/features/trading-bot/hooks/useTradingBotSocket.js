@@ -31,10 +31,7 @@ export function useTradingBotSocket(callbacks = {}) {
 
     let socket;
     try {
-      if (typeof io !== 'function') {
-        console.warn('Trading Bot: socket.io-client not available');
-        return;
-      }
+      if (typeof io !== 'function') return;
       const url = window.location.origin;
       socket = io(url, {
         path: '/socket.io',
@@ -43,13 +40,20 @@ export function useTradingBotSocket(callbacks = {}) {
         reconnectionAttempts: Infinity,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
+        // Suppress socket.io debug logs when trading bot server is not running
+        ...(typeof localStorage !== 'undefined' && { logger: { error: () => {}, warn: () => {}, info: () => {}, debug: () => {} } }),
       });
       socketRef.current = socket;
     } catch (err) {
-      console.warn('Trading Bot: socket connection failed', err);
       return;
     }
 
+    socket.on('connect_error', () => {
+      setConnected(false);
+    });
+    socket.on('connect_timeout', () => {
+      setConnected(false);
+    });
     socket.on('connect', () => {
       setConnected(true);
       callbacksRef.current.onConnect?.();

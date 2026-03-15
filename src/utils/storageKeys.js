@@ -34,6 +34,7 @@ export const STORAGE_KEYS = {
   BUDGET_BUDGETS: 'budgetTracker_budgets',
   BUDGET_REMINDERS: 'budgetTracker_reminders',
   BTC_MINER_ADDRESS: 'btc_miner_address',
+  BTC_MINER_CONNECTION: 'btc_miner_connection',
   FIB_SYMBOL: 'fibStuffSymbol',
   FIB_PRECISION: 'fibStuffPrecision',
   DELETED_MONITORS: 'deletedMonitors',

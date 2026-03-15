@@ -1250,13 +1250,13 @@ function Dashboard() {
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto">
-      <nav className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
-        <span className="font-medium text-gray-900 dark:text-white">Dashboard</span>
-      </nav>
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">Dashboard</h1>
-        <p className="text-sm text-black dark:text-gray-400">Real-time market data and world clocks</p>
+    <div className="w-full max-w-[1800px] mx-auto flex flex-col space-y-6">
+      <div>
+        <nav className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
+          <span className="font-medium text-gray-900 dark:text-white">Dashboard</span>
+        </nav>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+        <p className="text-sm text-black dark:text-gray-400 mt-1">Real-time market data and world clocks</p>
       </div>
 
       {/* Sections in order with drag and drop */}

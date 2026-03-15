@@ -26,10 +26,17 @@ export async function initSchema() {
 
 export async function seedAdmin() {
   const adminPassword = process.env.ADMIN_INITIAL_PASSWORD;
-  if (!adminPassword) return;
-  const r = await pool.query("SELECT id FROM users WHERE username = 'admin' LIMIT 1");
-  if (r.rows.length > 0) return;
   const bcrypt = (await import('bcryptjs')).default;
+  const r = await pool.query("SELECT id FROM users WHERE username = 'admin' LIMIT 1");
+  if (r.rows.length > 0) {
+    if (adminPassword) {
+      const hash = await bcrypt.hash(adminPassword, 10);
+      await pool.query(`UPDATE users SET password_hash = $1 WHERE username = 'admin'`, [hash]);
+      console.log('Admin password updated from ADMIN_INITIAL_PASSWORD');
+    }
+    return;
+  }
+  if (!adminPassword) return;
   const hash = await bcrypt.hash(adminPassword, 10);
   await pool.query(
     `INSERT INTO users (username, password_hash, is_admin) VALUES ('admin', $1, true)`,

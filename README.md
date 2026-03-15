@@ -38,6 +38,9 @@ A web application for financial market analysis and projections using advanced m
 │   └── nginx.conf            # Nginx server configuration
 ├── scripts/                   # Build and utility scripts
 │   ├── deploy.sh             # Deploy dist/ to server (run from root: ./scripts/deploy.sh)
+│   ├── run-dev.sh            # Start dev (sources nvm/fnm/asdf, runs npm run dev)
+│   ├── setup-sentiment.sh    # One-time Sentiment setup (venv, pip, NLTK, .env)
+│   ├── run-sentiment-api.sh  # Start Sentiment API (venv-aware)
 │   ├── server-fix.sh         # Server-side clean redeploy
 │   ├── update-htaccess.js    # Post-build script for .htaccess
 │   ├── verify-build.js       # Post-build verification
@@ -63,7 +66,8 @@ A web application for financial market analysis and projections using advanced m
 ### Prerequisites
 
 - Node.js 18+ and npm
-- Python 3.7+
+- Python 3.9+
+- PostgreSQL (for Sentiment page; can reuse main app DB on port 5433)
 
 ### Frontend Setup
 
@@ -89,12 +93,49 @@ python server.py
 
 The backend will be available at `http://localhost:8080`
 
+### Sentiment page (optional)
+
+The **Sentiment** page (Market Sentiment and Composite & Indices) requires a separate Python backend. Run **one-time setup** before first use:
+
+```bash
+./scripts/setup-sentiment.sh
+```
+
+This installs Node deps, creates Sentiment venv, installs pip packages, downloads NLTK data, and creates `.env`. Edit `archive/source-projects/SENTIMENT INDICATOR - 2026/.env` to set `DATABASE_URL` (e.g. `postgresql://localhost:5433/algonov26` for main app DB). Create the DB and run migrations if needed:
+
+
+```bash
+createdb sentiment_db   # or your DB name from DATABASE_URL
+cd archive/source-projects/SENTIMENT\ INDICATOR\ -\ 2026 && PYTHONPATH=. .venv/bin/python -m alembic upgrade head
+```
+
+Then start dev (Vite + Sentiment API):
+
+```bash
+./scripts/run-dev.sh
+# or, if npm is in PATH:
+npm run dev
+```
+
+See `archive/source-projects/SENTIMENT INDICATOR - 2026/README.md` for database and API keys.
+
 ## Available Scripts
 
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
+- `npm run sentiment:api` - Start Sentiment backend (port 8000) for the Sentiment page
+
+### If you see "command not found: npm"
+
+When using nvm, fnm, or asdf, the terminal may not have Node in PATH. Use:
+
+```bash
+./scripts/run-dev.sh
+```
+
+This script sources nvm/fnm/asdf (if present) and runs `npm run dev`. If npm is still not found, install Node.js 18+ from [nodejs.org](https://nodejs.org/), Homebrew (`brew install node`), or nvm.
 
 ## Documentation
 

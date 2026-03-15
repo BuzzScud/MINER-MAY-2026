@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { usePublicSettings } from '../contexts/PublicSettingsContext';
 import './Login.css';
 
 export default function Login() {
@@ -9,6 +10,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const { login, isAuthenticated } = useAuth();
+  const { maintenanceMode } = usePublicSettings();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,6 +36,13 @@ export default function Login() {
       <main className="login-auth-card">
         <p className="login-auth-path">/auth</p>
         <h1 className="login-auth-title">Secure Login</h1>
+        {maintenanceMode && (
+          <div className="login-flash-messages">
+            <div className="login-flash-message login-flash-warning" role="status">
+              Maintenance in progress. Try again later. Admins may still sign in.
+            </div>
+          </div>
+        )}
         {error && (
           <div className="login-flash-messages">
             <div className="login-flash-message login-flash-error">{error}</div>

@@ -36,7 +36,7 @@ function Modal({ open, onClose, title, children }) {
   );
 }
 
-export default function AdminActivity() {
+export default function AdminActivity({ embedded = false }) {
   const { token } = useAuth();
   const [list, setList] = useState([]);
   const [error, setError] = useState(null);
@@ -88,13 +88,40 @@ export default function AdminActivity() {
   const userActivities = selectedUsername ? list.filter((a) => a.username === selectedUsername) : [];
 
   return (
-    <div className="max-w-4xl">
-      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">/admin/activity</p>
-      <h1 className="text-2xl font-bold text-gray-100 mb-2">User Activity</h1>
-      <p className="text-sm text-gray-400 mb-4">
-        User movements through the app. Updates every 2 seconds. Click a username to view their activity.
-      </p>
-      <div className="mb-4">
+    <div className={embedded ? 'space-y-4' : 'w-full max-w-4xl mx-auto space-y-4'}>
+      {!embedded && (
+        <>
+          <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">/admin/activity</p>
+          <h1 className="text-2xl font-bold text-gray-100 mb-2">User Activity</h1>
+          <p className="text-sm text-gray-400 mb-4">
+            User movements through the app. Updates every 2 seconds. Click a username to view their activity.
+          </p>
+        </>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            if (!token) return;
+            fetch('/api/admin/export/activity?format=csv', { headers: { Authorization: `Bearer ${token}` } })
+              .then((r) => {
+                if (!r.ok) throw new Error('Export failed');
+                return r.blob();
+              })
+              .then((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'activity.csv';
+                a.click();
+                URL.revokeObjectURL(url);
+              })
+              .catch((e) => setError(e.message));
+          }}
+          className="px-4 py-2 border border-white/20 text-gray-300 rounded hover:bg-white/5 text-sm"
+        >
+          Export CSV
+        </button>
         <button
           type="button"
           onClick={handleClear}
@@ -105,7 +132,7 @@ export default function AdminActivity() {
         </button>
       </div>
 
-      {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+      {error && <p className="text-red-400 text-sm">{error}</p>}
 
       <div className="rounded-lg border border-white/10 overflow-hidden bg-[#1c1c1c] max-h-[400px] overflow-y-auto">
         <table className="w-full text-sm">

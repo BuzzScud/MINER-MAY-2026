@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import Projection from './Projection';
+import FibStuff from './FibStuff';
 import { useStorage } from '../utils/storage';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 import {
@@ -108,7 +110,15 @@ function CandlestickChartWrapper({ chartType, candlestickData, chartData, symbol
   return null;
 }
 
+const CHARTS_TAB = 'charts';
+const PROJECTION_TAB = 'projection';
+const FIB_STUFF_TAB = 'fib';
+
 function Trading() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const tab = tabParam === PROJECTION_TAB ? PROJECTION_TAB : tabParam === FIB_STUFF_TAB ? FIB_STUFF_TAB : CHARTS_TAB;
+  const setTab = (t) => setSearchParams(t === CHARTS_TAB ? {} : { tab: t });
   const { getItem, setItem } = useStorage();
   const [symbol, setSymbol] = useState('QQQ');
   const [interval, setInterval] = useState('1D');
@@ -677,6 +687,82 @@ function Trading() {
         <span>/</span>
         <span className="font-medium text-gray-900 dark:text-white">Charts</span>
       </nav>
+      <div
+        role="tablist"
+        aria-label="Charts and projection tabs"
+        className="flex gap-0 border-b border-gray-200 dark:border-gray-700 mb-4 flex-shrink-0"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === CHARTS_TAB}
+          aria-controls="tabpanel-charts"
+          id="tab-charts"
+          onClick={() => setTab(CHARTS_TAB)}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            tab === CHARTS_TAB
+              ? 'border-indigo-600 text-gray-900 dark:text-white'
+              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          Charts
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === PROJECTION_TAB}
+          aria-controls="tabpanel-projection"
+          id="tab-projection"
+          onClick={() => setTab(PROJECTION_TAB)}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            tab === PROJECTION_TAB
+              ? 'border-indigo-600 text-gray-900 dark:text-white'
+              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          Projection
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === FIB_STUFF_TAB}
+          aria-controls="tabpanel-fib"
+          id="tab-fib"
+          onClick={() => setTab(FIB_STUFF_TAB)}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            tab === FIB_STUFF_TAB
+              ? 'border-indigo-600 text-gray-900 dark:text-white'
+              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          Fib Stuff
+        </button>
+      </div>
+      {tab === PROJECTION_TAB ? (
+        <div
+          id="tabpanel-projection"
+          role="tabpanel"
+          aria-labelledby="tab-projection"
+          className="flex-1 min-h-0 overflow-hidden"
+        >
+          <Projection embedded />
+        </div>
+      ) : tab === FIB_STUFF_TAB ? (
+        <div
+          id="tabpanel-fib"
+          role="tabpanel"
+          aria-labelledby="tab-fib"
+          className="flex-1 min-h-0 overflow-hidden"
+        >
+          <FibStuff embedded />
+        </div>
+      ) : (
+        <div
+          id="tabpanel-charts"
+          role="tabpanel"
+          aria-labelledby="tab-charts"
+          className="flex-1 min-h-0 overflow-auto flex flex-col"
+        >
       <div className="text-center mb-6 flex-shrink-0">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
           Charts
@@ -935,8 +1021,8 @@ function Trading() {
                 </div>
               )}
             </div>
-            <div className="p-2 flex-1 min-h-0">
-              <div className="w-full h-full relative">
+            <div className="p-2 flex-1 min-h-[240px]">
+              <div className="w-full h-full relative min-h-[200px]">
                 {chartData && chartData.labels && chartData.labels.length > 0 && chartData.datasets && chartData.datasets[0] && chartData.datasets[0].data && chartData.datasets[0].data.length > 0 ? (
                   <>
                     {loading && (
@@ -990,8 +1076,8 @@ function Trading() {
                 Trading Volume
               </h2>
             </div>
-            <div className="p-2 flex-1 min-h-0">
-              <div className="w-full h-full relative">
+            <div className="p-2 flex-1 min-h-[160px]">
+              <div className="w-full h-full relative min-h-[140px]">
                 {volumeData && volumeData.labels && volumeData.labels.length > 0 ? (
                   <>
                     {loading && (
@@ -1029,6 +1115,8 @@ function Trading() {
               </div>
             </div>
           </div>
+        </div>
+      )}
         </div>
       )}
     </div>

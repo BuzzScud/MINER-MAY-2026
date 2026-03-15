@@ -1702,7 +1702,7 @@ function getProjectionColor(i, alpha = 0.9) {
   return `hsla(${h}, 85%, 60%, ${alpha})`;
 }
 
-function Projection() {
+function Projection({ embedded = false }) {
   const location = useLocation();
   const { getItem, setItem } = useStorage();
   const storage = { getItem, setItem };
@@ -2694,19 +2694,23 @@ function Projection() {
 
   return (
     <div className="w-full max-w-[1800px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden">
-      <nav className="flex items-center gap-2 text-sm text-black dark:text-gray-400 mb-4 flex-shrink-0">
-        <Link to="/" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Dashboard</Link>
-        <span>/</span>
-        <span className="font-medium text-gray-900 dark:text-white">Projection</span>
-      </nav>
-      <div className="text-center mb-6 flex-shrink-0">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-          Price Projection
-        </h1>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Prime tetration and multi-line price projections
-        </p>
-      </div>
+      {!embedded && (
+        <>
+          <nav className="flex items-center gap-2 text-sm text-black dark:text-gray-400 mb-4 flex-shrink-0">
+            <Link to="/" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Dashboard</Link>
+            <span>/</span>
+            <span className="font-medium text-gray-900 dark:text-white">Projection</span>
+          </nav>
+          <div className="text-center mb-6 flex-shrink-0">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+              Price Projection
+            </h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Prime tetration and multi-line price projections
+            </p>
+          </div>
+        </>
+      )}
 
       {/* Input Controls - Compact Row */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-4 flex-shrink-0">
@@ -3122,8 +3126,8 @@ function Projection() {
             </div>
           </div>
           
-          <div className="p-2 flex-1 min-h-0">
-            <div className="w-full h-full relative">
+          <div className="p-2 flex-1 min-h-[240px]">
+            <div className="w-full h-full relative min-h-[200px]">
               {chartData && 
                Array.isArray(chartData.labels) && 
                chartData.labels.length > 0 && 

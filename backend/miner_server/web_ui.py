@@ -402,6 +402,7 @@ def api_stats():
         "lifetime_blocks": lifetime_blocks,
         "last_session_elapsed_sec": last_sess_elapsed,
         "last_session_hashes": last_sess_hashes,
+        "activity_log_available": bool(_resolve_activity_log_path()),
     })
 
 
@@ -498,6 +499,24 @@ def _mining_worker(config: MinerConfig) -> None:
         _network_activity_append("Mining: stopped.")
 
 
+@miner_bp.route("/validate_address", methods=["GET", "POST"])
+def api_validate_address():
+    """Validate mining address (bech32/base58check). Returns ok and script length or error with hint."""
+    data = request.get_json(silent=True) or request.form or {}
+    address = (data.get("mining_address") or data.get("address") or request.args.get("mining_address") or request.args.get("address") or "").strip()
+    if not address:
+        return jsonify({"ok": False, "error": "Address required"})
+    try:
+        script = address_to_script_pubkey(address)
+        return jsonify({"ok": True, "script_len": len(script)})
+    except ValueError as e:
+        err = str(e)
+        hint = ""
+        if "bech32" in err.lower() or "checksum" in err.lower():
+            hint = " Copy the address exactly from your wallet (avoid digit 1 vs letter l, or 0 vs O)."
+        return jsonify({"ok": False, "error": err, "hint": hint})
+
+
 @miner_bp.route("/start", methods=["POST"])
 def api_start():
     """Start mining (background thread)."""
@@ -536,6 +555,56 @@ def api_stop():
     return jsonify({"ok": True, "message": "Stop requested"})
 
 
+def _reset_mining_stats_and_logs() -> None:
+    """Reset stats and logs to zero/fresh state."""
+    global _mining_stats
+    _mining_stats["hashes"] = 0
+    _mining_stats["blocks"] = 0
+    _mining_stats["hashrate"] = 0.0
+    _mining_stats["start_time"] = None
+    _mining_stats["last_elapsed_sec"] = None
+    _mining_stats["error"] = None
+    with _mining_log_lock:
+        _mining_log.clear()
+    with _network_activity_lock:
+        _network_activity.clear()
+
+
+@miner_bp.route("/restart", methods=["POST"])
+def api_restart():
+    """Stop mining, reset stats to 0, then start mining again with current config."""
+    global _mining_thread, _mining_stop
+    if _mining_stats["running"]:
+        _mining_stop.set()
+        if _mining_thread is not None and _mining_thread.is_alive():
+            _mining_thread.join(timeout=5.0)
+        _mining_thread = None
+    _reset_mining_stats_and_logs()
+    _mining_stop.clear()
+    try:
+        config = _config_from_request()
+        if not config.mining_address:
+            return jsonify({"ok": False, "error": "Mining address required"})
+        address_to_script_pubkey(config.mining_address)
+        capabilities = ["segwit"] if config.network != "regtest" else []
+        try:
+            template = getblocktemplate(config, capabilities)
+            if not template:
+                return jsonify({"ok": False, "error": "Cannot get block template. Is the chain synced? Connect first."})
+        except BitcoinRPCError as e:
+            return jsonify({"ok": False, "error": f"Cannot get block template: {e}. Check RPC and auth."})
+        addr = (config.mining_address or "")[:20]
+        if len(config.mining_address or "") > 20:
+            addr += "..."
+        _mining_log_append(f"Restart: mining started (address {addr})")
+        _network_activity_append("Mining: restarted (stats reset to 0).")
+        _mining_thread = threading.Thread(target=_mining_worker, args=(config,), daemon=True)
+        _mining_thread.start()
+        return jsonify({"ok": True, "message": "Mining restarted (stats reset to 0)"})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
 @miner_bp.route("/mining_log", methods=["GET"])
 def api_mining_log():
     """Return last N lines of mining log (timestamp + message)."""
@@ -568,6 +637,36 @@ def api_log():
 def api_activity():
     """Alias for network_activity for React frontend."""
     return api_network_activity()
+
+
+def _read_recent_activity_log_lines(max_lines: int = 50) -> list:
+    """Read last N lines from mining_activity.log (JSONL) for learning/observability. Returns list of parsed objects."""
+    path = _resolve_activity_log_path()
+    if not path or not os.path.isfile(path):
+        return []
+    out: list = []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        for line in lines[-max_lines:]:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                out.append(json.loads(line))
+            except (json.JSONDecodeError, ValueError):
+                continue
+    except (OSError, IOError):
+        pass
+    return out
+
+
+@miner_bp.route("/activity_log", methods=["GET"])
+def api_activity_log():
+    """Return recent mining activity log entries (from mining_activity.log JSONL) for learning and observability."""
+    limit = min(100, max(1, int(request.args.get("limit", 50))))
+    entries = _read_recent_activity_log_lines(max_lines=limit)
+    return jsonify({"ok": True, "entries": entries, "learning_enabled": bool(_resolve_activity_log_path())})
 
 
 @miner_bp.route("/detect", methods=["GET"])
@@ -631,14 +730,20 @@ def api_detect():
 
 @miner_bp.route("/thesis_math_status", methods=["GET"])
 def api_thesis_math_status():
-    """Return thesis alignment and custom-math usage for the miner."""
+    """Return thesis alignment and custom-math usage for the miner. All nonce solutions from custom math are used in the pipeline."""
     return jsonify({
         "python_miner": "Unified Python miner: getblocktemplate, double-SHA256, deterministic base nonce, sphere hopping, duality ordering, golden-ratio spiral, optional OBJECTIVE 28 recovery, 4 or 8 workers (quadrant partition when 4, chunk partition when 8; 500D lattice).",
         "thesis_alignment": "Miner uses thesis-aligned logic: deterministic nonce (seed prime + tetration), 12-fold sphere distribution, duality prime positions {1,5,7,11}, golden-ratio offsets, recovery when lib available. Partition over full 32-bit nonce space; thesis ch.15 unbiased search preserved.",
         "custom_math_used": "Python miner: hashlib SHA256, pure-Python thesis_mining (bits_compact_to_difficulty_bits, nonce_generate_unified_py, build_candidate_list, quadrant_from_nonce). Optional recovery via c. math lib when available.",
+        "nonce_solutions_used": [
+            "Phase 1: minimal nonces (get_minimal_nonce_list: base + recovery, 1–2 hashes)",
+            "Phase 2: thesis candidates (build_candidate_list: sphere hopping, duality, golden-ratio; 4 workers = quadrant partition, 8 workers = chunk partition)",
+            "Phase 3: linear sweep (optional, per-worker disjoint range)",
+        ],
         "base_nonce_source": get_base_nonce_source(),
         "recovery_loaded": is_recovery_loaded(),
         "last_seed_prime_path": get_last_seed_prime_path(),
+        "use_unified_default": True,
     })
 
 
@@ -853,7 +958,7 @@ HTML_PAGE = """<!DOCTYPE html>
 
   <div class="card">
     <h2>Mining</h2>
-    <label>Mining address <input type="text" id="mining_address" value="bc1qwa6mt2gy4gfazg29tn9k8qvtzmxyj6ju4z0y9u" placeholder="bc1q... or bcrt1q..."></label>
+    <label>Mining address <input type="text" id="mining_address" value="bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4" placeholder="bc1q... or bcrt1q..."></label>
     <button id="btn_start">Start mining</button>
     <button id="btn_stop">Stop mining</button>
     <div id="stats"></div>

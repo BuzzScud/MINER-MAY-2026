@@ -103,6 +103,12 @@
   color: #9ca3af;
 }
 
+.login-flash-warning {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fcd34d;
+}
+
 .login-auth-form-wrapper.submitting .login-form-group,
 .login-auth-form-wrapper.submitting .login-btn-primary {
   opacity: 0.5;

@@ -12,6 +12,7 @@ python3 test_miner_full.py
 python3 test_thesis_mining.py
 python3 test_nonce_log.py
 python3 test_quadrant_partition.py
+python3 test_partition_candidates.py
 python3 address.py
 echo ""
 echo "=== All tests passed ==="

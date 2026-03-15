@@ -1,8 +1,13 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import path from 'path';
+import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
 import { pool } from '../db.js';
+import { startTime } from '../startTime.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 
@@ -77,6 +82,10 @@ router.get('/stats', async (req, res) => {
     const databaseType = dbUri.includes('postgresql') ? 'PostgreSQL' : dbUri.includes('sqlite') ? 'SQLite' : 'Unknown';
 
     const dbMetrics = { databaseType, latencyMs, connected: true };
+    let appDataRowCount = 0;
+    let appDataSizeBytes = 0;
+    let recentActivity = [];
+
     if (databaseType === 'PostgreSQL') {
       try {
         const versionResult = await pool.query('SELECT version() AS v');
@@ -85,20 +94,130 @@ router.get('/stats', async (req, res) => {
         dbMetrics.activeConnections = connResult.rows[0]?.n ?? null;
         const sizeResult = await pool.query('SELECT pg_database_size(current_database()) AS size');
         dbMetrics.databaseSizeBytes = sizeResult.rows[0]?.size ?? null;
+        const appDataCountResult = await pool.query('SELECT count(*)::int AS count FROM app_data');
+        appDataRowCount = appDataCountResult.rows[0]?.count ?? 0;
+        const appDataSizeResult = await pool.query("SELECT pg_total_relation_size('app_data')::bigint AS size");
+        appDataSizeBytes = Number(appDataSizeResult.rows[0]?.size ?? 0);
       } catch (metricsErr) {
         console.error('DB metrics error:', metricsErr.message);
       }
     }
+
+    try {
+      const activityResult = await pool.query(
+        `SELECT id, user_id, username, route, method, timestamp, ip_address
+         FROM user_activity ORDER BY timestamp DESC LIMIT 10`
+      );
+      recentActivity = activityResult.rows.map((row) => ({
+        id: row.id,
+        user_id: row.user_id,
+        username: row.username,
+        route: row.route,
+        method: row.method,
+        timestamp: row.timestamp,
+        ip_address: row.ip_address,
+      }));
+    } catch (activityErr) {
+      console.error('Recent activity error:', activityErr.message);
+    }
+
+    const uptimeSeconds = Math.floor((Date.now() - startTime) / 1000);
 
     res.json({
       totalUsers,
       newUsers7d,
       ...dbMetrics,
       currentTime: new Date().toISOString(),
+      nodeVersion: process.version,
+      nodeEnv: process.env.NODE_ENV || 'development',
+      uptimeSeconds,
+      appDataRowCount,
+      appDataSizeBytes,
+      recentActivity,
     });
   } catch (e) {
     console.error('Admin stats error:', e);
     res.status(500).json({ error: 'Failed to load stats' });
+  }
+});
+
+async function getSystemSetting(key) {
+  const r = await pool.query('SELECT value FROM system_settings WHERE key = $1', [key]);
+  return r.rows[0]?.value ?? null;
+}
+
+async function setSystemSetting(key, value) {
+  await pool.query(
+    `INSERT INTO system_settings (key, value, updated_at) VALUES ($1, $2, now())
+     ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = now()`,
+    [key, JSON.stringify(value)]
+  );
+}
+
+router.get('/settings/maintenance', async (req, res) => {
+  await logActivity(req);
+  try {
+    const raw = await getSystemSetting('maintenance_mode');
+    const enabled = raw === true || raw === 'true';
+    res.json({ enabled });
+  } catch (e) {
+    console.error('Get maintenance error:', e.message);
+    res.status(500).json({ error: 'Failed to get maintenance setting' });
+  }
+});
+
+router.post('/settings/maintenance', async (req, res) => {
+  await logActivity(req);
+  try {
+    const enabled = !!req.body?.enabled;
+    await setSystemSetting('maintenance_mode', enabled);
+    res.json({ enabled });
+  } catch (e) {
+    console.error('Set maintenance error:', e.message);
+    res.status(500).json({ error: 'Failed to set maintenance' });
+  }
+});
+
+router.get('/settings/announcement', async (req, res) => {
+  await logActivity(req);
+  try {
+    const raw = await getSystemSetting('announcement');
+    const announcement = raw && typeof raw === 'object'
+      ? { text: raw.text ?? '', active: !!raw.active }
+      : { text: '', active: false };
+    res.json(announcement);
+  } catch (e) {
+    console.error('Get announcement error:', e.message);
+    res.status(500).json({ error: 'Failed to get announcement' });
+  }
+});
+
+router.post('/settings/announcement', async (req, res) => {
+  await logActivity(req);
+  try {
+    const { text, active } = req.body ?? {};
+    const announcement = { text: typeof text === 'string' ? text : '', active: !!active };
+    await setSystemSetting('announcement', announcement);
+    res.json(announcement);
+  } catch (e) {
+    console.error('Set announcement error:', e.message);
+    res.status(500).json({ error: 'Failed to set announcement' });
+  }
+});
+
+router.get('/login-attempts', async (req, res) => {
+  await logActivity(req);
+  try {
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const result = await pool.query(
+      `SELECT id, username, success, ip_address, timestamp
+       FROM login_attempts ORDER BY timestamp DESC LIMIT $1`,
+      [limit]
+    );
+    res.json({ attempts: result.rows });
+  } catch (e) {
+    console.error('Login attempts error:', e.message);
+    res.status(500).json({ error: 'Failed to load login attempts' });
   }
 });
 
@@ -253,6 +372,128 @@ router.post('/activity/clear', async (req, res) => {
   }
 });
 
+const DEPENDENCY_CHECK_TIMEOUT_MS = 2500;
+const DEPENDENCY_CACHE_MS = 45000;
+let dependencyCache = { result: null, at: 0 };
+
+async function checkService(url, name) {
+  const start = Date.now();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DEPENDENCY_CHECK_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: controller.signal, method: 'GET' });
+    clearTimeout(timeout);
+    const latencyMs = Date.now() - start;
+    return { name, up: res.ok, latencyMs };
+  } catch {
+    clearTimeout(timeout);
+    return { name, up: false, latencyMs: Date.now() - start };
+  }
+}
+
+router.get('/dependencies', async (req, res) => {
+  await logActivity(req);
+  const now = Date.now();
+  if (dependencyCache.result && now - dependencyCache.at < DEPENDENCY_CACHE_MS) {
+    return res.json(dependencyCache.result);
+  }
+  try {
+    const services = [
+      { url: 'http://127.0.0.1:8080/', name: 'Trading Bot (8080)' },
+      { url: 'http://127.0.0.1:5001/', name: 'Miner (5001)' },
+      { url: 'http://127.0.0.1:4000/api/health', name: 'API (4000)' },
+    ];
+    const results = await Promise.all(services.map((s) => checkService(s.url, s.name)));
+    const payload = results;
+    dependencyCache = { result: payload, at: now };
+    res.json(payload);
+  } catch (e) {
+    console.error('Dependencies check error:', e.message);
+    res.status(500).json({ error: 'Failed to check dependencies' });
+  }
+});
+
+router.get('/rate-limits', async (req, res) => {
+  await logActivity(req);
+  res.json({ message: 'Not implemented', limits: [] });
+});
+
+function escapeCsvCell(val) {
+  if (val == null) return '';
+  const s = String(val);
+  if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+const EXPORT_ACTIVITY_LIMIT = 10000;
+
+router.get('/export/users', async (req, res) => {
+  await logActivity(req);
+  const wantsCsv = req.query.format === 'csv' || req.get('accept')?.includes('text/csv');
+  if (!wantsCsv) {
+    return res.status(400).json({ error: 'Use ?format=csv or Accept: text/csv' });
+  }
+  try {
+    const result = await pool.query(
+      `SELECT id, username, created_at, is_admin, is_active
+       FROM users ORDER BY created_at DESC`
+    );
+    const headers = ['id', 'username', 'created_at', 'is_admin', 'is_active'];
+    const lines = [headers.join(',')];
+    for (const row of result.rows) {
+      lines.push(headers.map((h) => escapeCsvCell(row[h])).join(','));
+    }
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="users.csv"');
+    res.send(lines.join('\n'));
+  } catch (e) {
+    console.error('Export users error:', e.message);
+    res.status(500).json({ error: 'Failed to export users' });
+  }
+});
+
+router.get('/export/activity', async (req, res) => {
+  await logActivity(req);
+  const wantsCsv = req.query.format === 'csv' || req.get('accept')?.includes('text/csv');
+  if (!wantsCsv) {
+    return res.status(400).json({ error: 'Use ?format=csv or Accept: text/csv' });
+  }
+  try {
+    const from = req.query.from;
+    const to = req.query.to;
+    let query = `SELECT id, user_id, username, route, method, timestamp, ip_address
+                 FROM user_activity`;
+    const params = [];
+    const conditions = [];
+    let paramIndex = 1;
+    if (from) {
+      conditions.push(`timestamp >= $${paramIndex++}`);
+      params.push(from);
+    }
+    if (to) {
+      conditions.push(`timestamp <= $${paramIndex++}`);
+      params.push(to);
+    }
+    if (conditions.length) query += ' WHERE ' + conditions.join(' AND ');
+    query += ' ORDER BY timestamp DESC LIMIT $' + paramIndex;
+    params.push(EXPORT_ACTIVITY_LIMIT);
+    const result = await pool.query(query, params);
+    const headers = ['id', 'user_id', 'username', 'route', 'method', 'timestamp', 'ip_address'];
+    const lines = [headers.join(',')];
+    for (const row of result.rows) {
+      lines.push(headers.map((h) => escapeCsvCell(row[h])).join(','));
+    }
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="activity.csv"');
+    res.send(lines.join('\n'));
+  } catch (e) {
+    console.error('Export activity error:', e.message);
+    res.status(500).json({ error: 'Failed to export activity' });
+  }
+});
+
 router.post('/emergency-logout', async (req, res) => {
   await logActivity(req);
   try {
@@ -264,6 +505,29 @@ router.post('/emergency-logout', async (req, res) => {
   } catch (e) {
     console.error('Emergency logout error:', e);
     res.status(500).json({ error: 'Failed to update emergency logout' });
+  }
+});
+
+router.post('/restart-server', async (req, res) => {
+  await logActivity(req);
+  try {
+    await pool.query(
+      `INSERT INTO emergency_logout (id, generation) VALUES (1, 1)
+       ON CONFLICT (id) DO UPDATE SET generation = emergency_logout.generation + 1`
+    );
+    res.json({ ok: true });
+    const apiDir = path.join(__dirname, '..');
+    const scriptPath = path.join(__dirname, '../scripts/restart-after-exit.js');
+    const child = spawn(process.execPath, [scriptPath], {
+      detached: true,
+      stdio: 'ignore',
+      cwd: apiDir,
+    });
+    child.unref();
+    setTimeout(() => process.exit(0), 2000);
+  } catch (e) {
+    console.error('Restart server error:', e);
+    res.status(500).json({ error: 'Failed to prepare restart' });
   }
 });
 

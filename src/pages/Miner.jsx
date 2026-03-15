@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useStorage } from '../utils/storage';
 import { STORAGE_KEYS } from '../utils/storageKeys';
@@ -62,7 +62,7 @@ export default function Miner() {
     rpc_user: '',
     rpc_password: '',
     network: 'mainnet',
-    mining_address: 'bc1qwa6mt2gy4gfazg29tn9k8qvtzmxyj6ju4z0y9u',
+    mining_address: 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4',
     cookie_file: '',
     datadir: '',
     num_workers: 8,
@@ -78,6 +78,8 @@ export default function Miner() {
   const [stats, setStats] = useState(null);
   const [logLines, setLogLines] = useState([]);
   const [activityEntries, setActivityEntries] = useState([]);
+  const miningLogRef = useRef(null);
+  const networkActivityRef = useRef(null);
   const [thesisInfo, setThesisInfo] = useState(null);
   const [miningError, setMiningError] = useState('');
 
@@ -98,8 +100,12 @@ export default function Miner() {
       cookie_file: config.cookie_file || undefined,
       datadir: config.datadir || undefined,
       num_workers: Math.max(1, Math.min(8, config.num_workers || 8)),
+      use_unified: true,
     };
   }, [config]);
+
+  const MINER_SERVER_UNREACHABLE = 'Request failed';
+  const minerServerDownMessage = 'Miner server not running. Start it with: npm run miner:server';
 
   const checkConnection = useCallback(async () => {
     setCheckingConnection(true);
@@ -111,8 +117,15 @@ export default function Miner() {
       setConnectionStatus({ state: 'connected', message: `Connected: ${r.chain}, blocks ${r.blocks}`, connected: true });
       setConnectionHint('');
     } else {
-      setConnectionStatus({ state: 'error', message: r.error || 'Not connected', connected: false });
-      setConnectionHint(r.cookie_found === false && r.cookie_path ? `No .cookie file at ${r.cookie_path}. Start Bitcoin Core with RPC enabled.` : '');
+      const isServerDown = r.error === MINER_SERVER_UNREACHABLE;
+      setConnectionStatus({
+        state: 'error',
+        message: isServerDown ? minerServerDownMessage : (r.error || 'Not connected'),
+        connected: false,
+      });
+      setConnectionHint(
+        isServerDown ? '' : (r.cookie_found === false && r.cookie_path ? `No .cookie file at ${r.cookie_path}. Start Bitcoin Core with RPC enabled.` : '')
+      );
     }
     return r;
   }, [getConfigForApi]);
@@ -137,7 +150,11 @@ export default function Miner() {
         setConnectionStatus({ state: 'connected', message: `Auto-connected to ${r.recommended.network}`, connected: true });
       }
     } else {
-      setDetectMessage({ type: 'error', text: 'Bitcoin Core not found. Install and run Bitcoin Core, then try again.' });
+      const isServerDown = r.error === MINER_SERVER_UNREACHABLE;
+      setDetectMessage({
+        type: 'error',
+        text: isServerDown ? minerServerDownMessage : 'Bitcoin Core not found. Install and run Bitcoin Core, then try again.',
+      });
     }
   }, []);
 
@@ -150,16 +167,48 @@ export default function Miner() {
   }, [getItem]);
 
   useEffect(() => {
+    getItem(STORAGE_KEYS.BTC_MINER_CONNECTION).then((saved) => {
+      if (saved && typeof saved === 'object' && saved.connected) {
+        setConnectionStatus((prev) =>
+          prev.state === 'idle' ? { state: 'connected', message: saved.message || 'Connected (restored)', connected: true } : prev
+        );
+      }
+    });
+  }, [getItem]);
+
+  useEffect(() => {
+    if (connectionStatus.connected) {
+      setItem(STORAGE_KEYS.BTC_MINER_CONNECTION, { connected: true, message: connectionStatus.message }).catch(() => {});
+    }
+  }, [connectionStatus.connected, connectionStatus.message, setItem]);
+
+  useEffect(() => {
+    checkConnection().catch(() => {});
+  }, [checkConnection]);
+
+  useEffect(() => {
+    api('/stats').then((r) => {
+      if (r && r.error === MINER_SERVER_UNREACHABLE) {
+        setConnectionStatus((prev) =>
+          prev.state === 'idle' ? { state: 'error', message: minerServerDownMessage, connected: false } : prev
+        );
+      }
+    });
+  }, []);
+
+  useEffect(() => {
     const cfg = getConfigForApi();
     const params = Object.fromEntries(Object.entries(cfg).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)]));
-    const t = setInterval(() => {
+    const fetchAll = () => {
       api('/stats').then(setStats);
       if (connectionStatus.connected || params.network) {
         api('/metrics', params).then((m) => m.ok && setMetrics(m));
       }
       api('/log').then((r) => r.lines && setLogLines(r.lines));
       api('/activity').then((r) => r.entries && setActivityEntries(r.entries));
-    }, 2500);
+    };
+    fetchAll();
+    const t = setInterval(fetchAll, 1000);
     return () => clearInterval(t);
   }, [getConfigForApi, connectionStatus.connected]);
 
@@ -167,18 +216,48 @@ export default function Miner() {
     api('/thesis_math_status').then((r) => r.python_miner && setThesisInfo(r));
   }, []);
 
+  useEffect(() => {
+    if (miningLogRef.current) {
+      miningLogRef.current.scrollTop = miningLogRef.current.scrollHeight;
+    }
+  }, [logLines]);
+
+  useEffect(() => {
+    if (networkActivityRef.current) {
+      networkActivityRef.current.scrollTop = networkActivityRef.current.scrollHeight;
+    }
+  }, [activityEntries]);
+
   const handleStart = async () => {
     setMiningError('');
     const r = await post('/start', getConfigForApi());
     if (r.ok) {
       setMiningError('');
     } else {
-      setMiningError(r.error || 'Failed to start');
+      let msg = r.error || 'Failed to start';
+      if (msg.toLowerCase().includes('bech32') || msg.toLowerCase().includes('checksum')) {
+        msg += ' Copy the address exactly from your wallet (avoid digit 1 vs letter l, or 0 vs O).';
+      }
+      setMiningError(msg);
     }
   };
 
   const handleStop = async () => {
     await post('/stop');
+  };
+
+  const [restarting, setRestarting] = useState(false);
+  const handleRestart = async () => {
+    setRestarting(true);
+    setMiningError('');
+    const r = await post('/restart', getConfigForApi());
+    setRestarting(false);
+    if (r.ok) {
+      setMiningError('');
+      setStats({ hashes: 0, blocks: 0, hashrate: 0, elapsed_sec: null });
+    } else {
+      setMiningError(r.error || 'Restart failed');
+    }
   };
 
   const handleBacktest = async () => {
@@ -289,6 +368,7 @@ export default function Miner() {
 
               <Panel title="Mining">
                 <p className="text-xs text-black dark:text-gray-400 mb-2">Address: {truncateAddress(config.mining_address)}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Use your own payout address from your wallet (paste exactly to avoid bech32 errors). Mining continues in the background when you leave this page.</p>
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                   <select
                     value={config.num_workers}
@@ -310,6 +390,9 @@ export default function Miner() {
                   <button type="button" onClick={handleStop} className="rounded bg-gray-200 dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-500">
                     Stop
                   </button>
+                  <button type="button" onClick={handleRestart} disabled={restarting} className="rounded bg-amber-600 px-3 py-1.5 text-sm text-white hover:bg-amber-700 disabled:opacity-50" title="Reset stats to 0 and restart mining">
+                    {restarting ? 'Restarting…' : 'Restart'}
+                  </button>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Metric label="Hashrate" value={stats?.hashrate != null ? `${stats.hashrate} H/s` : null} mono />
@@ -322,6 +405,11 @@ export default function Miner() {
 
               <Panel title="Thesis & Custom Math">
                 <div className="text-xs text-black dark:text-gray-400 space-y-1">
+                  {(thesisInfo?.base_nonce_source || thesisInfo?.last_seed_prime_path) && (
+                    <p className="font-mono text-sm mb-1">
+                      Base: {thesisInfo.base_nonce_source ?? '—'} · Seed: {thesisInfo.last_seed_prime_path ?? 'n/a'}
+                    </p>
+                  )}
                   {thesisInfo?.python_miner && <p>{thesisInfo.python_miner}</p>}
                   {thesisInfo?.thesis_alignment && <p>{thesisInfo.thesis_alignment}</p>}
                 </div>
@@ -341,13 +429,19 @@ export default function Miner() {
               </Panel>
 
               <Panel title="Mining Log">
-                <pre className="font-mono text-xs text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-700/50 rounded p-2 max-h-40 overflow-y-auto whitespace-pre-wrap break-all">
+                <pre
+                  ref={miningLogRef}
+                  className="font-mono text-xs text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-700/50 rounded p-2 max-h-40 overflow-y-auto whitespace-pre-wrap break-all scroll-smooth"
+                >
                   {logLines.length ? logLines.join('\n') : '—'}
                 </pre>
               </Panel>
 
               <Panel title="Network Activity">
-                <pre className="font-mono text-xs text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-700/50 rounded p-2 max-h-40 overflow-y-auto whitespace-pre-wrap break-all">
+                <pre
+                  ref={networkActivityRef}
+                  className="font-mono text-xs text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-700/50 rounded p-2 max-h-40 overflow-y-auto whitespace-pre-wrap break-all scroll-smooth"
+                >
                   {activityEntries.length ? activityEntries.join('\n') : '—'}
                 </pre>
               </Panel>

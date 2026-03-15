@@ -9,7 +9,7 @@
       "detail": "vite",
       "isBackground": true,
       "runOptions": {
-        "runOn": "default"
+        "runOn": "folderOpen"
       }
     }
   ]

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { useStorage } from '../utils/storage';
+import { useStorage, saveBatch } from '../utils/storage';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 import {
   PieChart,
@@ -58,7 +58,7 @@ function fromYMD(str) {
 }
 
 function BudgetTracker() {
-  const { getItem, setItem } = useStorage();
+  const { getItem, setItem, token } = useStorage();
   const [tab, setTab] = useState('dashboard');
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [budgets, setBudgets] = useState([]);
@@ -93,6 +93,7 @@ function BudgetTracker() {
   const [billsStatusFilter, setBillsStatusFilter] = useState('all');
   const [billsCategoryFilter, setBillsCategoryFilter] = useState('all');
 
+  // Load from API (algonov26) when logged in, or localStorage when not. Re-run when token becomes available (e.g. after refresh).
   useEffect(() => {
     Promise.all([
       getItem(STORAGE_KEY_CATEGORIES),
@@ -103,7 +104,28 @@ function BudgetTracker() {
       setBudgets(Array.isArray(bud) ? bud : []);
       setReminders(Array.isArray(rem) ? rem : []);
     });
-  }, [getItem]);
+  }, [getItem, token]);
+
+  // Flush current state to storage on page unload so refresh doesn't lose the last change
+  useEffect(() => {
+    const flush = () => {
+      if (token) {
+        saveBatch(token, {
+          [STORAGE_KEY_CATEGORIES]: categories,
+          [STORAGE_KEY_BUDGETS]: budgets,
+          [STORAGE_KEY_REMINDERS]: reminders,
+        }).catch(() => {});
+      } else {
+        try {
+          localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(categories));
+          localStorage.setItem(STORAGE_KEY_BUDGETS, JSON.stringify(budgets));
+          localStorage.setItem(STORAGE_KEY_REMINDERS, JSON.stringify(reminders));
+        } catch (_) {}
+      }
+    };
+    window.addEventListener('beforeunload', flush);
+    return () => window.removeEventListener('beforeunload', flush);
+  }, [token, categories, budgets, reminders]);
 
   useEffect(() => {
     setItem(STORAGE_KEY_CATEGORIES, categories).catch(() => {});

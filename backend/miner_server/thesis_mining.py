@@ -5,6 +5,10 @@ Provides: deterministic base nonce, recovery suggested nonce, sphere hopping,
 duality ordering, golden-ratio spiral, candidate list generation.
 500D lattice and quadrant partition for 4-worker nonce search (full 32-bit
 space; thesis ch.15 unbiased search preserved).
+
+12-fold clock: positions 3,6,9 = Clock O(1) seed prime; positions 1,5,7,11 =
+sphere step count (duality). See thesis_constants and Strategy
+Documents/PYTHON STRAT/CLOCK LATTICE.txt.
 """
 from __future__ import annotations
 
@@ -16,6 +20,25 @@ from ctypes import CDLL, POINTER, Structure, byref, c_bool, c_double, c_int, c_s
 from typing import Optional
 
 from config import use_c_candidates, use_c_nonce
+from thesis_constants import (
+    BACK_REACTION_PRIME,
+    CLOCK_LATTICE_500D_DIMS,
+    CLOCK_O1_POSITIONS,
+    COMBINED_CYCLE,
+    CRYSTALLINE_PRIMES,
+    FRACTAL_RINGS,
+    LUNAR_PRIME,
+    NORMALIZER_432,
+    PHI,
+    PLATONIC_RADIUS,
+    POLAR_LATTICE_HARMONICS,
+    POLAR_LATTICE_PRIMES,
+    PRIME_HARMONIC_Q,
+    QUADRATIC_BOUNDARY,
+    SPHERE_PRIME_POSITIONS,
+    TWIN_PRIME_PAIRS,
+    TWO_PI,
+)
 
 # Probe timeout: if C nonce call does not return within this many seconds, disable C path.
 _NONCE_C_PROBE_TIMEOUT_SEC = 8.0
@@ -27,10 +50,6 @@ _libnonce = None
 _base_nonce_source: str = "python"
 _recovery_loaded: Optional[bool] = None  # set on first recovery_suggested_nonce attempt
 _last_seed_prime_path: Optional[str] = None  # "clock_o1" or "sft"
-PHI = 1.618033988749895
-PLATONIC_RADIUS = 500
-TWO_PI = 2.0 * math.pi
-CLOCK_LATTICE_500D_DIMS = 500
 
 # First 500 primes (aligned with C clock_lattice_500d); filled on first use
 _CLOCK_LATTICE_FREQUENCIES_500D: list[int] = []
@@ -269,12 +288,12 @@ def _has_interference_o1(base: int, magnitude: int) -> bool:
 
 def _clock_o1_seed_prime(block_height: int) -> int | None:
     """
-    Clock Lattice O(1) seed prime. Works only for positions 3, 6, 9.
+    Clock Lattice O(1) seed prime. Works only for positions in CLOCK_O1_POSITIONS (3, 6, 9).
     Returns None if position not in {3,6,9} or candidate is composite.
     """
     position = block_height % 12
     magnitude = block_height // 12
-    if position not in (3, 6, 9):
+    if position not in CLOCK_O1_POSITIONS:
         return None
     base_map = {3: 5, 6: 7, 9: 11}
     base = base_map[position]
@@ -386,10 +405,40 @@ def _sft_deterministic_prime_map(start: int, end: int, max_primes: int = 100) ->
     return out[:max_primes]
 
 
+def _crystalline_boundary_prime(block_height: int) -> int | None:
+    """
+    Check if block_height sits on a Crystalline structural boundary (multiple
+    of 144 or 432, or is itself a Crystalline prime, or is adjacent to a
+    twin-prime pair).  Returns the nearest prime >= block_height that aligns
+    with the Crystalline structure, or None.
+    """
+    _crystalline_set = set(CRYSTALLINE_PRIMES)
+
+    if block_height in _crystalline_set and _is_prime(block_height):
+        return block_height
+
+    for lo, hi in TWIN_PRIME_PAIRS:
+        if block_height == lo:
+            return lo
+        if block_height == hi:
+            return hi
+
+    for divisor in (NORMALIZER_432, QUADRATIC_BOUNDARY):
+        remainder = block_height % divisor
+        if remainder <= 2 or remainder >= divisor - 2:
+            for delta in (0, 1, -1, 2, -2):
+                candidate = block_height + delta
+                if candidate >= 2 and _is_prime(candidate):
+                    return candidate
+
+    return None
+
+
 def _get_seed_prime_thesis(block_height: int) -> int:
     """
-    Thesis-only seed prime: Clock O(1) when applicable, else SFT.
-    No brute force. block_height < 2 -> 2.
+    Thesis-only seed prime: Clock O(1) when applicable, then Crystalline
+    boundary check, then SFT fallback.  No brute force.
+    block_height < 2 -> 2.
     """
     global _last_seed_prime_path
     if block_height < 2:
@@ -399,6 +448,10 @@ def _get_seed_prime_thesis(block_height: int) -> int:
     if candidate is not None:
         _last_seed_prime_path = "clock_o1"
         return candidate
+    crystalline = _crystalline_boundary_prime(block_height)
+    if crystalline is not None:
+        _last_seed_prime_path = "crystalline"
+        return crystalline
     _last_seed_prime_path = "sft"
     primes = _sft_deterministic_prime_map(
         block_height, block_height + 10000, max_primes=1
@@ -562,8 +615,8 @@ def get_minimal_nonce_list(
 
 
 def is_prime_position(pos: int) -> bool:
-    """True for clock positions {1, 5, 7, 11} (mod 12)."""
-    return (pos % 12) in (1, 5, 7, 11)
+    """True for clock positions in SPHERE_PRIME_POSITIONS (1, 5, 7, 11) mod 12; sphere step count."""
+    return (pos % 12) in SPHERE_PRIME_POSITIONS
 
 
 def fold_to_q1(pos: int) -> int:
@@ -620,11 +673,100 @@ def recovery_suggested_nonce(bits_bytes: bytes) -> Optional[int]:
     return None
 
 
+# ---------------------------------------------------------------------------
+# Polar prime lattice (E-S-F fabric model).
+# ---------------------------------------------------------------------------
+
+_POLAR_LATTICE_CACHE: list[dict] | None = None
+
+
+def _compute_polar_lattice() -> list[dict]:
+    """
+    Build the polar prime lattice from POLAR_LATTICE_PRIMES.
+
+    Each prime p_n occupies:
+      r_n = cumulative product of previous primes (mod NONCE_MAX+1)
+      θ_n = 2π × (cumulative / p_n) mod 2π
+    Plus POLAR_LATTICE_HARMONICS conjugate angles per prime:
+      θ_{n,k,m} = k × 2π × (p_m / p_n) mod 2π
+    """
+    global _POLAR_LATTICE_CACHE
+    if _POLAR_LATTICE_CACHE is not None:
+        return _POLAR_LATTICE_CACHE
+
+    lattice: list[dict] = []
+    cumulative = 1
+    primes_so_far: list[int] = []
+
+    for p in POLAR_LATTICE_PRIMES:
+        r = cumulative % (NONCE_MAX + 1)
+        theta = (TWO_PI * (cumulative / p)) % TWO_PI
+
+        conjugates: list[float] = []
+        for k in range(1, POLAR_LATTICE_HARMONICS + 1):
+            for pm in primes_so_far:
+                conj = (k * TWO_PI * (pm / p)) % TWO_PI
+                conjugates.append(conj)
+
+        lattice.append({
+            "prime": p,
+            "radius": r,
+            "theta": theta,
+            "conjugates": conjugates,
+        })
+        primes_so_far.append(p)
+        cumulative *= p
+
+    _POLAR_LATTICE_CACHE = lattice
+    return lattice
+
+
+def _polar_lattice_candidates(base_nonce: int, block_height: int) -> list[int]:
+    """
+    Generate nonce candidates from the polar prime lattice.
+
+    For each lattice point (r, θ):
+      candidate = int(r × |sin(θ)| % (NONCE_MAX+1))
+    shifted by base_nonce and block_height for per-block variation.
+
+    Conjugate angles produce additional candidates.
+    The back-reaction prime (167) and Q-product (231) create cascade
+    offsets that amplify coverage at resonant positions.
+    """
+    lattice = _compute_polar_lattice()
+    out: list[int] = []
+    nonce_space = NONCE_MAX + 1
+
+    height_phase = (block_height * math.pi * PHI) % TWO_PI
+
+    for point in lattice:
+        r = point["radius"]
+        theta = point["theta"]
+
+        raw = int(r * abs(math.sin(theta + height_phase))) % nonce_space
+        out.append((base_nonce + raw) & NONCE_MAX)
+        out.append((base_nonce - raw) & NONCE_MAX)
+
+        q_offset = int(r * abs(math.sin(theta * PRIME_HARMONIC_Q / point["prime"]))) % nonce_space
+        out.append((base_nonce + q_offset) & NONCE_MAX)
+
+        br_offset = int(abs(math.sin(theta + height_phase)) * BACK_REACTION_PRIME * point["prime"]) % nonce_space
+        out.append((base_nonce + br_offset) & NONCE_MAX)
+        out.append((base_nonce - br_offset) & NONCE_MAX)
+
+        for conj_theta in point["conjugates"]:
+            conj_raw = int(r * abs(math.sin(conj_theta + height_phase))) % nonce_space
+            out.append((base_nonce + conj_raw) & NONCE_MAX)
+
+    return out
+
+
 def build_candidate_list(
     base_nonce: int,
     recovery_nonce: int,
     start_nonce: int,
     end_nonce: int,
+    quadrant_id: Optional[int] = None,
 ) -> list[int]:
     """
     Build candidate nonces using sphere hopping, duality ordering, golden-ratio spiral.
@@ -634,9 +776,13 @@ def build_candidate_list(
     c. math/math/src/compact/sphere_hopping.c). The C miner uses create_sphere_hierarchy(2)
     to drive the same 12-sphere, duality, golden-ratio formula.
 
+    When quadrant_id is not None (0-3), only nonces in that 500D lattice quadrant are
+    included; used by 4-worker thesis partition to avoid building the full list per worker.
+    When quadrant_id is set, C path is skipped (Python-only) so each worker builds only
+    its quadrant's candidates.
     When BTC_USE_C_CANDIDATES=1 and libalgorithms is loaded, uses C build_candidate_list_sphere.
     """
-    if use_c_candidates() and _load_libnonce() and _libnonce is not False:
+    if quadrant_id is None and use_c_candidates() and _load_libnonce() and _libnonce is not False:
         fn = getattr(_libnonce, "build_candidate_list_sphere", None)
         if fn is not None:
             buf = (c_uint32 * 1024)()
@@ -652,11 +798,15 @@ def build_candidate_list(
             ) == 0:
                 return [int(buf[i]) for i in range(count.value)]
     nonce_range = end_nonce - start_nonce
+    if nonce_range <= 0:
+        return []
     sphere_size = max(1, nonce_range // 12)
     seen: set[int] = set()
     candidates: list[int] = []
 
     def add(n: int) -> None:
+        if quadrant_id is not None and quadrant_from_nonce(n) != quadrant_id:
+            return
         if start_nonce <= n < end_nonce and n not in seen:
             seen.add(n)
             candidates.append(n)
@@ -680,6 +830,65 @@ def build_candidate_list(
     for off in range(-200, 201):
         add(base_nonce + off)
         add(recovery_nonce + off)
+
+    # --- Crystalline layers (Grok "Lunar Cycle Stability" thesis) ---
+
+    # Layer A: 432-family normalization.
+    # 144 (12²) and 432 (144×3) are fundamental set boundaries; twin primes
+    # 431/433 flank the normalizer.  Sweep multiples up to ±10.
+    for k in range(1, 11):
+        for stride in (QUADRATIC_BOUNDARY, NORMALIZER_432):
+            add(base_nonce + k * stride)
+            add(base_nonce - k * stride)
+        add(base_nonce + k * 431)
+        add(base_nonce - k * 431)
+        add(base_nonce + k * 433)
+        add(base_nonce - k * 433)
+
+    # Layer B: twin-prime boundary sweep.
+    # Each twin-prime pair marks a modular boundary; offset base and recovery
+    # by the pair values and by pair × sphere index for cross-layer coverage.
+    for lo, hi in TWIN_PRIME_PAIRS:
+        add(base_nonce + lo)
+        add(base_nonce - lo)
+        add(base_nonce + hi)
+        add(base_nonce - hi)
+        add(recovery_nonce + lo)
+        add(recovery_nonce - lo)
+        add(recovery_nonce + hi)
+        add(recovery_nonce - hi)
+        for s in range(12):
+            add(base_nonce + lo * (s + 1))
+            add(base_nonce + hi * (s + 1))
+
+    # Layer C: fractal ring expansion.
+    # Platonic layers at distances 7, 12, 20, 24, 30, 42 from each sphere
+    # center — self-similar copies of the prime-boundary structure.
+    for s in range(12):
+        sphere_base = start_nonce + (s * sphere_size) % nonce_range
+        if sphere_base >= end_nonce:
+            sphere_base = start_nonce
+        for ring in FRACTAL_RINGS:
+            add(sphere_base + ring)
+            add(sphere_base - ring)
+
+    # Layer D: 29-prime lunar / 762 combined-cycle modular.
+    # 29 is the lunar prime (level 3 recursive zero-paired); 762 = 61×12 + 29.
+    for k in range(1, 21):
+        add(base_nonce + k * LUNAR_PRIME)
+        add(base_nonce - k * LUNAR_PRIME)
+    for k in range(1, 11):
+        add(base_nonce + k * COMBINED_CYCLE)
+        add(base_nonce - k * COMBINED_CYCLE)
+
+    # Layer E: polar prime lattice (E-S-F fabric model).
+    # Nonce candidates from the lattice positions (r, θ) of the first 10
+    # primes, including conjugate harmonics and cascade amplification at
+    # the back-reaction prime (167) and Q-product (231 = 3×7×11).
+    # Uses base_nonce as the per-block phase seed.
+    polar_cands = _polar_lattice_candidates(base_nonce, base_nonce)
+    for pc in polar_cands:
+        add(pc)
 
     return candidates
 

@@ -155,7 +155,7 @@ async function fetchMarketData(symbol, period = 'ytd', anchorMode = 'first_day')
   };
 }
 
-function FibStuff() {
+function FibStuff({ embedded = false }) {
   const { getItem, setItem } = useStorage();
   const [symbol, setSymbol] = useState('QQQ');
   const [precision, setPrecision] = useState(2);
@@ -390,20 +390,24 @@ function FibStuff() {
     : null;
 
   return (
-    <div className="w-full max-w-[1800px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden">
-      <nav className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2 flex-shrink-0">
-        <Link to="/" className="hover:text-sky-400 dark:hover:text-sky-300 transition-colors">Dashboard</Link>
-        <span>/</span>
-        <span className="font-medium text-gray-900 dark:text-white">Fib Stuff</span>
-      </nav>
-      <div className="text-center mb-3 flex-shrink-0">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-          Fib Stuff
-        </h1>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Fibonacci retracement and extension levels with real-time market data
-        </p>
-      </div>
+    <div className={`w-full max-w-[1800px] mx-auto flex flex-col h-full min-h-0 overflow-hidden ${embedded ? '' : 'px-4'}`}>
+      {!embedded && (
+        <>
+          <nav className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2 flex-shrink-0">
+            <Link to="/" className="hover:text-sky-400 dark:hover:text-sky-300 transition-colors">Dashboard</Link>
+            <span>/</span>
+            <span className="font-medium text-gray-900 dark:text-white">Fib Stuff</span>
+          </nav>
+          <div className="text-center mb-3 flex-shrink-0">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+              Fib Stuff
+            </h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Fibonacci retracement and extension levels with real-time market data
+            </p>
+          </div>
+        </>
+      )}
 
       {/* Two-column: left panel (controls/data/fib) | right panel (chart) — chart is hero on lg+ */}
       <div className="flex flex-col lg:flex-row gap-3 flex-1 min-h-0 overflow-hidden">

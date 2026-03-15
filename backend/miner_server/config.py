@@ -29,19 +29,32 @@ def use_c_candidates() -> bool:
     return os.environ.get("BTC_USE_C_CANDIDATES", "1").strip().lower() not in ("0", "false", "no")
 
 
-PHASE3_DEFAULT_NONCES = 500_000
+def use_c_hasher() -> bool:
+    """True to use libhasher_fast for ARM SHA-256 accelerated batch nonce scanning.
+    Set BTC_USE_C_HASHER=0 to force pure-Python hashlib path."""
+    return os.environ.get("BTC_USE_C_HASHER", "1").strip().lower() not in ("0", "false", "no")
+
+
+PHASE3_DEFAULT_NONCES_PYTHON = 500_000
+PHASE3_DEFAULT_NONCES_C = 500_000_000
 
 
 def phase3_nonces_per_worker() -> int:
     """Nonces per worker for Phase 3 linear sweep. 0 to disable Phase 3.
-    Set BTC_PHASE3_NONCES_PER_WORKER=0 for thesis-pure mode (no linear sweep)."""
-    s = os.environ.get("BTC_PHASE3_NONCES_PER_WORKER", str(PHASE3_DEFAULT_NONCES)).strip()
-    if s.lower() in ("0", "false", "no", ""):
-        return 0
-    try:
-        return max(0, int(s))
-    except ValueError:
-        return PHASE3_DEFAULT_NONCES
+    Set BTC_PHASE3_NONCES_PER_WORKER=0 for thesis-pure mode (no linear sweep).
+    When C hasher is available (BTC_USE_C_HASHER=1), default jumps from 500K to
+    500M per worker — enough for 8 workers to cover the full 32-bit nonce space."""
+    explicit = os.environ.get("BTC_PHASE3_NONCES_PER_WORKER", "").strip()
+    if explicit:
+        if explicit.lower() in ("0", "false", "no"):
+            return 0
+        try:
+            return max(0, int(explicit))
+        except ValueError:
+            pass
+    if use_c_hasher():
+        return PHASE3_DEFAULT_NONCES_C
+    return PHASE3_DEFAULT_NONCES_PYTHON
 
 
 def default_num_workers() -> int:
@@ -244,7 +257,7 @@ class MinerConfig:
     rpc_password: str = ""
     rpc_timeout: int = 30
     network: str = "regtest"
-    mining_address: str = "bc1qwa6mt2gy4gfazg29tn9k8qvtzmxyj6ju4z0y9u"
+    mining_address: str = "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4"
     num_threads: int = 1
     num_workers: int = 8  # default 8; 4 = thesis quadrant partition (500D); overridden by env/CLI
     use_unified: bool = True
@@ -298,7 +311,7 @@ def load_config_from_env() -> MinerConfig:
         rpc_password=os.environ.get("BTC_RPC_PASSWORD", ""),
         rpc_timeout=int(os.environ.get("BTC_RPC_TIMEOUT", "30")),
         network=network,
-        mining_address=os.environ.get("BTC_MINING_ADDRESS", "bc1qwa6mt2gy4gfazg29tn9k8qvtzmxyj6ju4z0y9u"),
+        mining_address=os.environ.get("BTC_MINING_ADDRESS", "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4"),
         num_threads=max(1, int(os.environ.get("BTC_NUM_THREADS", "1"))),
         num_workers=num_workers,
         use_unified=os.environ.get("BTC_USE_UNIFIED", "1").strip() in ("1", "true", "yes"),

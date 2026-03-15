@@ -1,0 +1,583 @@
+"""
+Trading strategy: run_cycle on each new bar, custom_math hook, position sizing, risk flatten.
+Decision windows: run signals 5 minutes before and 5 minutes after the 20- and 50-minute marks
+each hour (minutes 15, 20, 25, 45, 50, 55). Works for stocks, crypto, and any Alpaca asset.
+"""
+from __future__ import annotations
+
+import json
+import logging
+import threading
+from collections import defaultdict
+from datetime import datetime, timezone
+from pathlib import Path
+from queue import Queue
+from typing import Any
+
+from broker import AlpacaBroker, BarData, asset_type
+from config import Config
+
+logger = logging.getLogger(__name__)
+
+TRADES_DIR = Path(__file__).resolve().parent / "trades"
+
+# Optional custom math: returns "buy" | "sell" | "hold"
+_custom_math_loaded = False
+_your_signal_function = None
+try:
+    from custom_math import get_signal_context
+except ImportError:
+    get_signal_context = None  # type: ignore[misc, assignment]
+
+
+def _load_custom_math() -> bool:
+    global _custom_math_loaded, _your_signal_function
+    if _custom_math_loaded:
+        return _your_signal_function is not None
+    _custom_math_loaded = True
+    try:
+        from custom_math import your_signal_function
+        _your_signal_function = your_signal_function
+        logger.info("Custom math loaded: your_signal_function")
+        return True
+    except ImportError as e:
+        logger.info("Custom math not used (import failed): %s", e)
+        return False
+    except AttributeError:
+        logger.info("Custom math module has no your_signal_function")
+        return False
+
+
+class TradingStrategy:
+    """
+    Runs on each new bar: custom math signal, position sizing, risk check (flatten if unrealized loss >= max %).
+    Pushes log/UI messages via ui_queue (dicts with type/text/color or type/data).
+    """
+
+    def __init__(
+        self,
+        broker: AlpacaBroker,
+        watched_symbols: list[str],
+        config: Config,
+        ui_queue: Queue[dict[str, Any]] | None = None,
+    ) -> None:
+        self.broker = broker
+        self.watched_symbols = watched_symbols
+        self.config = config
+        self.ui_queue = ui_queue or Queue()
+        self._lock = threading.Lock()
+        self._running = True
+        self._bar_buffer: dict[str, BarData] = {}
+        self._bar_history: dict[str, list[BarData]] = {}
+        self._position_entry_time: dict[str, datetime] = {}  # normalized symbol -> UTC entry time
+        self._asset_class_buy_rotation: list[str] = ["stock", "crypto"]  # order for preferring which class to buy
+        self._last_buy_class_index: int = 0  # next class to prefer when multiple buys
+        # Eager-load signal so first bar can trade immediately
+        _load_custom_math()
+        if _your_signal_function is not None:
+            self._log_ui("Strategy ready. Trading on every bar.", "info")
+        else:
+            self._log_ui("Strategy ready but custom_math not loaded — no trades until signal is available.", "blue")
+
+    def _log_ui(self, text: str, color: str = "info") -> None:
+        if self.ui_queue is not None:
+            self.ui_queue.put({"type": "log", "text": text, "color": color})
+
+    def start(self) -> None:
+        """Resume strategy after stop(); allows run_cycle to process bars again."""
+        self._running = True
+
+    def _can_trade(self) -> bool:
+        """Check position count, account, and daily loss limit."""
+        try:
+            if self._daily_loss_limit_breached():
+                self._log_ui("No new trades: daily loss limit reached.", "blue")
+                return False
+            positions = self.broker.get_positions()
+            if len(positions) >= self.config.MAX_POSITIONS:
+                self._log_ui(f"No new trades: max positions ({self.config.MAX_POSITIONS}) reached.", "blue")
+                return False
+            return True
+        except Exception:
+            return False
+
+    def _compute_qty(self, symbol: str, side: str) -> float:
+        """Position size: fixed qty or % of equity; capped by buying_power * MARGIN_SAFETY_FRACTION."""
+        if self.config.FIXED_QTY is not None:
+            base_qty = float(self.config.FIXED_QTY)
+        else:
+            try:
+                account = self.broker.get_account()
+                if account is None:
+                    return 1.0
+                equity = float(getattr(account, "equity", 0) or 0)
+                if equity <= 0:
+                    return 1.0
+                pct = self.config.POSITION_SIZE_PCT / 100.0
+                notional = equity * pct
+                bar = self._bar_buffer.get(symbol)
+                price = float(bar.close) if bar else 1.0
+                if price <= 0:
+                    return 1.0
+                qty = notional / price
+                base_qty = max(1, round(qty, 0)) if qty >= 1 else 1.0
+            except Exception as e:
+                logger.debug("_compute_qty: %s", e)
+                return 1.0
+        # Cap by margin: order notional must not exceed effective buying_power (safety fraction minus commission/margin reserve)
+        try:
+            buying_power = self.broker.get_buying_power()
+            if buying_power is not None and buying_power > 0:
+                safety = getattr(self.config, "MARGIN_SAFETY_FRACTION", 0.95)
+                reserve_pct = getattr(self.config, "MARGIN_RESERVE_PCT", 0.0)
+                commission_per_side = getattr(self.config, "ESTIMATED_COMMISSION_PER_TRADE_USD", 0.0) or 0.0
+                effective_bp = buying_power * safety * (1.0 - reserve_pct)
+                commission_reserve = 2.0 * commission_per_side  # open + close
+                max_notional = max(0.0, effective_bp - commission_reserve)
+                bar = self._bar_buffer.get(symbol)
+                price = float(bar.close) if bar else 1.0
+                if price > 0 and max_notional > 0:
+                    max_qty = max_notional / price
+                    if base_qty * price > max_notional:
+                        base_qty = max(1, int(max_qty)) if max_qty >= 1 else (max_qty if asset_type(symbol) == "crypto" else 1.0)
+                        logger.debug("_compute_qty: reduced qty for margin/commission (symbol=%s)", symbol)
+        except Exception as e:
+            logger.debug("_compute_qty margin cap: %s", e)
+        return base_qty
+
+    def _daily_loss_limit_breached(self) -> bool:
+        """True if day PnL is worse than MAX_DAILY_LOSS_PCT of previous equity.
+        Uses Alpaca last_equity (previous trading day); if missing we use equity so day_pnl_pct is 0 and limit never triggers.
+        """
+        try:
+            account = self.broker.get_account()
+            if account is None:
+                return False
+            equity = float(getattr(account, "equity", 0) or 0)
+            last_equity = float(getattr(account, "last_equity", 0) or 0) or equity
+            if last_equity <= 0:
+                return False
+            day_pnl_pct = (equity - last_equity) / last_equity * 100.0
+            max_daily = getattr(self.config, "MAX_DAILY_LOSS_PCT", 5.0)
+            return day_pnl_pct <= -max_daily
+        except Exception:
+            return False
+
+    def _record_position_entry_now(self, sym: str) -> None:
+        """Set position entry time to now for symbol (first sight or new buy)."""
+        key = self._normalize_symbol_key(sym)
+        self._position_entry_time[key] = datetime.now(timezone.utc)
+
+    def _clear_position_entry(self, sym: str) -> None:
+        """Remove entry time when position is closed."""
+        key = self._normalize_symbol_key(sym)
+        self._position_entry_time.pop(key, None)
+
+    @staticmethod
+    def _bar_to_dict(bar_data: BarData | None) -> dict[str, Any] | None:
+        """Serialize bar for trade record; None if bar_data is None."""
+        if bar_data is None:
+            return None
+        return {
+            "open": float(getattr(bar_data, "open", 0) or 0),
+            "high": float(getattr(bar_data, "high", 0) or 0),
+            "low": float(getattr(bar_data, "low", 0) or 0),
+            "close": float(getattr(bar_data, "close", 0) or 0),
+            "volume": float(getattr(bar_data, "volume", 0) or 0),
+            "timestamp": str(getattr(bar_data, "timestamp", "") or ""),
+        }
+
+    def _record_trade(
+        self,
+        symbol: str,
+        side: str,
+        qty: float,
+        trigger: str,
+        bar_data: BarData | None = None,
+        unrealized_pl_pct: float | None = None,
+        signal_context: dict[str, Any] | None = None,
+    ) -> None:
+        """Append one trade record to trades/trades_YYYY-MM-DD.jsonl for future learning."""
+        try:
+            ts_utc = datetime.now(timezone.utc).isoformat()
+            bar = self._bar_to_dict(bar_data)
+            record = {
+                "ts_utc": ts_utc,
+                "symbol": symbol,
+                "side": side,
+                "qty": qty,
+                "trigger": trigger,
+                "bar": bar,
+                "unrealized_pl_pct": unrealized_pl_pct,
+                "signal_context": signal_context,
+            }
+            TRADES_DIR.mkdir(exist_ok=True)
+            path = TRADES_DIR / f"trades_{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.jsonl"
+            with self._lock:
+                with path.open("a", encoding="utf-8") as f:
+                    f.write(json.dumps(record, default=str) + "\n")
+        except Exception as e:
+            logger.debug("_record_trade failed: %s", e)
+
+    def _risk_check(self) -> None:
+        """Flatten by stop-loss / take-profit / max-hold; flatten all if daily loss limit breached."""
+        try:
+            positions = self.broker.get_positions()
+            if self._daily_loss_limit_breached():
+                for pos in positions:
+                    sym = getattr(pos, "symbol", None) or getattr(pos, "symbol_id", "")
+                    qty = float(getattr(pos, "qty", 0) or 0)
+                    if not sym or qty == 0:
+                        continue
+                    side = self._position_side(pos)
+                    close_side = "sell" if side == "long" else "buy"
+                    self.broker.close_position(sym, position_obj=pos)
+                    self._record_trade(sym, close_side, abs(qty), "daily_loss", bar_data=None, signal_context=None)
+                    self._log_ui(f"Daily loss limit: flattened {side} {abs(qty)} {sym}", "red")
+                    self._clear_position_entry(sym)
+                return
+            max_hold_minutes = getattr(self.config, "MAX_HOLD_MINUTES", 0)
+            max_hold_by_symbol = getattr(self.config, "MAX_HOLD_BY_SYMBOL", None) or {}
+            if max_hold_minutes > 0 or max_hold_by_symbol:
+                now = datetime.now(timezone.utc)
+                for pos in positions:
+                    sym = getattr(pos, "symbol", None) or getattr(pos, "symbol_id", "")
+                    qty = float(getattr(pos, "qty", 0) or 0)
+                    if not sym or qty == 0:
+                        continue
+                    key = self._normalize_symbol_key(sym)
+                    effective_max_hold = max_hold_by_symbol.get(key, max_hold_minutes)
+                    if effective_max_hold <= 0:
+                        continue
+                    entry_time = self._position_entry_time.get(key)
+                    if entry_time is None:
+                        continue
+                    elapsed_minutes = (now - entry_time).total_seconds() / 60.0
+                    if elapsed_minutes >= effective_max_hold:
+                        side = self._position_side(pos)
+                        close_side = "sell" if side == "long" else "buy"
+                        self.broker.close_position(sym, position_obj=pos)
+                        self._record_trade(sym, close_side, abs(qty), "max_hold", bar_data=None, signal_context=None)
+                        self._clear_position_entry(sym)
+                        self._log_ui(f"Max hold: closed {side} {abs(qty)} {sym} (held {elapsed_minutes:.0f} min)", "red")
+            max_loss_pct = getattr(self.config, "MAX_UNREALIZED_LOSS_PCT", 5.0)
+            take_profit_pct = getattr(self.config, "TAKE_PROFIT_PCT", 0.0)
+            positions = self.broker.get_positions()
+            for pos in positions:
+                sym = getattr(pos, "symbol", None) or getattr(pos, "symbol_id", "")
+                if not sym:
+                    continue
+                unrealized_pct = float(getattr(pos, "unrealized_plpc", 0) or 0) * 100.0
+                qty = float(getattr(pos, "qty", 0) or 0)
+                if qty == 0:
+                    continue
+                side = self._position_side(pos)
+                close_side = "sell" if side == "long" else "buy"
+                if unrealized_pct <= -max_loss_pct:
+                    self.broker.close_position(sym, position_obj=pos)
+                    self._record_trade(sym, close_side, abs(qty), "risk_flatten", bar_data=None, unrealized_pl_pct=unrealized_pct, signal_context=None)
+                    self._clear_position_entry(sym)
+                    self._log_ui(f"Risk flatten: closed {side} {abs(qty)} {sym} (loss %={unrealized_pct:.2f})", "red")
+                elif take_profit_pct > 0 and unrealized_pct >= take_profit_pct:
+                    self.broker.close_position(sym, position_obj=pos)
+                    self._record_trade(sym, close_side, abs(qty), "take_profit", bar_data=None, unrealized_pl_pct=unrealized_pct, signal_context=None)
+                    self._clear_position_entry(sym)
+                    self._log_ui(f"Take profit: closed {side} {abs(qty)} {sym} (gain %={unrealized_pct:.2f})", "green")
+        except Exception as e:
+            logger.exception("_risk_check: %s", e)
+
+    @staticmethod
+    def _symbol_eq(a: str, b: str) -> bool:
+        """True if symbols refer to same asset (e.g. BTC/USD and BTCUSD)."""
+        if a == b:
+            return True
+        return (a or "").replace("/", "").upper() == (b or "").replace("/", "").upper()
+
+    @staticmethod
+    def _position_side(pos: Any) -> str:
+        """Return 'long' or 'short' from Alpaca position (side attribute or qty sign)."""
+        side = (getattr(pos, "side", None) or "").__str__().strip().lower()
+        if side == "short":
+            return "short"
+        qty = float(getattr(pos, "qty", 0) or 0)
+        if qty < 0:
+            return "short"
+        return "long"
+
+    @staticmethod
+    def _normalize_symbol_key(symbol: str) -> str:
+        """Canonical key for position entry time dict."""
+        return (symbol or "").replace("/", "").upper()
+
+    def _minute_of_hour(self, bar_data: BarData) -> int | None:
+        """Parse bar timestamp; return minute (0-59) or None if unparseable."""
+        ts = getattr(bar_data, "timestamp", "") or ""
+        if not ts:
+            return None
+        try:
+            if hasattr(bar_data.timestamp, "minute"):
+                return bar_data.timestamp.minute
+            s = str(ts).replace("Z", "+00:00")
+            dt = datetime.fromisoformat(s)
+            return dt.minute
+        except Exception:
+            return None
+
+    def _symbol_in_watched(self, symbol: str) -> bool:
+        """True if watched_symbols is empty or symbol matches any watched symbol (normalized)."""
+        if not self.watched_symbols:
+            return True
+        return any(self._symbol_eq(symbol, w) for w in self.watched_symbols)
+
+    def _regrade_positions(self, bar_data_dict: dict[str, BarData]) -> None:
+        """
+        Reanalyze each open position with the latest bar we have; close if the signal now says exit.
+        Positions whose symbol is in bar_data_dict are skipped here (main loop will run signal with fresh bar).
+        """
+        if _your_signal_function is None:
+            _load_custom_math()
+        if _your_signal_function is None:
+            return
+        positions = self.broker.get_positions()
+        for pos in positions:
+            sym = getattr(pos, "symbol", None) or getattr(pos, "symbol_id", "")
+            qty = float(getattr(pos, "qty", 0) or 0)
+            if not sym or qty == 0:
+                continue
+            if sym in bar_data_dict:
+                continue
+            with self._lock:
+                bar_data = self._bar_buffer.get(sym)
+                history = list(self._bar_history.get(sym, []))
+            if bar_data is None or not history:
+                continue
+            try:
+                signal = _your_signal_function(
+                    sym, bar_data, self.broker, bar_history=history, config=self.config
+                )
+                if signal not in ("buy", "sell", "hold"):
+                    signal = "hold"
+            except Exception as e:
+                logger.exception("Re-grade signal error for %s: %s", sym, e)
+                continue
+            side = self._position_side(pos)
+            if side == "long" and signal == "sell":
+                try:
+                    self.broker.close_position(sym, position_obj=pos)
+                    ctx = get_signal_context(sym, bar_data, self.broker, bar_history=history, config=self.config) if get_signal_context else None
+                    self._record_trade(sym, "sell", abs(qty), "regrade_exit", bar_data=bar_data, signal_context=ctx)
+                    self._clear_position_entry(sym)
+                    self._log_ui(f"Re-grade: closed long {abs(qty)} {sym} (signal=sell)", "red")
+                except Exception as e:
+                    self._log_ui(f"Re-grade close failed {sym}: {e}", "red")
+            elif side == "short" and signal == "buy":
+                try:
+                    self.broker.close_position(sym, position_obj=pos)
+                    ctx = get_signal_context(sym, bar_data, self.broker, bar_history=history, config=self.config) if get_signal_context else None
+                    self._record_trade(sym, "buy", abs(qty), "regrade_exit", bar_data=bar_data, signal_context=ctx)
+                    self._clear_position_entry(sym)
+                    self._log_ui(f"Re-grade: closed short {abs(qty)} {sym} (signal=buy)", "green")
+                except Exception as e:
+                    self._log_ui(f"Re-grade close failed {sym}: {e}", "red")
+
+    def run_cycle(self, bar_data_dict: dict[str, BarData]) -> None:
+        """
+        Called on every new bar (or batch). Updates bar buffer and history, runs risk check.
+        When TRADE_EVERY_BAR is True: signal runs on every bar (no minute filter).
+        When TRADE_EVERY_BAR is False: new entries are gated by FOCUS_MINUTES (or TRADE_INTERVAL_MINUTES);
+        exit logic (cover short / sell long) runs every bar. Only watched symbols are processed if watched_symbols is non-empty.
+        """
+        if not bar_data_dict:
+            return
+        max_history = getattr(self.config, "BAR_HISTORY_MAX", 120)
+        trade_every_bar = getattr(self.config, "TRADE_EVERY_BAR", True)
+        focus_minutes: tuple[int, ...] = getattr(self.config, "FOCUS_MINUTES", (15, 20, 25, 45, 50, 55))
+
+        # Restrict to watched symbols when watchlist is non-empty
+        if self.watched_symbols:
+            bar_data_dict = {s: b for s, b in bar_data_dict.items() if self._symbol_in_watched(s)}
+        if not bar_data_dict:
+            return
+
+        with self._lock:
+            self._bar_buffer.update(bar_data_dict)
+            for symbol, bar_data in bar_data_dict.items():
+                hist = self._bar_history.setdefault(symbol, [])
+                hist.append(bar_data)
+                if len(hist) > max_history:
+                    self._bar_history[symbol] = hist[-max_history:]
+
+        self._risk_check()
+        if not self._running:
+            return
+        can_trade = self._can_trade()
+        focus_results: list[tuple[str, str]] = []  # (symbol, signal) for visibility log
+        buy_symbols: list[str] = []  # symbols with buy signal and no long yet (open long)
+        sell_symbols: list[str] = []  # symbols with sell signal and no short yet (open short)
+
+        self._regrade_positions(bar_data_dict)
+        if not self._running:
+            return
+
+        for symbol, bar_data in bar_data_dict.items():
+            with self._lock:
+                history = list(self._bar_history.get(symbol, []))
+
+            # Decision windows: when TRADE_EVERY_BAR is False, allow new entries only in focus minutes
+            minute = self._minute_of_hour(bar_data)
+            in_focus_window = minute is not None and minute in focus_minutes
+            allow_new_entry = trade_every_bar or in_focus_window
+
+            signal = "hold"
+            if _your_signal_function is not None:
+                try:
+                    signal = _your_signal_function(
+                        symbol, bar_data, self.broker, bar_history=history, config=self.config
+                    )
+                    if signal not in ("buy", "sell", "hold"):
+                        signal = "hold"
+                except Exception as e:
+                    logger.exception("Custom math signal error for %s: %s", symbol, e)
+                    signal = "hold"
+            else:
+                _load_custom_math()
+                if _your_signal_function is None:
+                    continue
+
+            focus_results.append((symbol, signal))
+            positions = self.broker.get_positions()
+
+            if signal == "buy":
+                has_position = False
+                for pos in positions:
+                    psym = getattr(pos, "symbol", None) or getattr(pos, "symbol_id", "")
+                    if not self._symbol_eq(psym, symbol):
+                        continue
+                    has_position = True
+                    qty = float(getattr(pos, "qty", 0) or 0)
+                    if qty == 0:
+                        continue
+                    side = self._position_side(pos)
+                    if side == "short":
+                        try:
+                            self.broker.close_position(symbol, position_obj=pos)
+                            ctx = get_signal_context(symbol, bar_data, self.broker, bar_history=history, config=self.config) if get_signal_context else None
+                            self._record_trade(symbol, "buy", abs(qty), "cover_short", bar_data=bar_data, signal_context=ctx)
+                            self._clear_position_entry(symbol)
+                            self._log_ui(f"Cover short {abs(qty)} {symbol}", "green")
+                        except Exception as e:
+                            self._log_ui(f"Cover failed {symbol}: {e}", "red")
+                    break
+                if not has_position and allow_new_entry:
+                    buy_symbols.append(symbol)
+
+            if signal == "sell":
+                has_position = False
+                for pos in positions:
+                    psym = getattr(pos, "symbol", None) or getattr(pos, "symbol_id", "")
+                    if not self._symbol_eq(psym, symbol):
+                        continue
+                    has_position = True
+                    qty = float(getattr(pos, "qty", 0) or 0)
+                    if qty == 0:
+                        continue
+                    side = self._position_side(pos)
+                    if side == "long":
+                        try:
+                            self.broker.close_position(symbol, position_obj=pos)
+                            ctx = get_signal_context(symbol, bar_data, self.broker, bar_history=history, config=self.config) if get_signal_context else None
+                            self._record_trade(symbol, "sell", abs(qty), "sell_long", bar_data=bar_data, signal_context=ctx)
+                            self._clear_position_entry(symbol)
+                            self._log_ui(f"Sell long {abs(qty)} {symbol}", "red")
+                        except Exception as e:
+                            self._log_ui(f"Sell failed {symbol}: {e}", "red")
+                    break
+                if not has_position and allow_new_entry:
+                    sell_symbols.append(symbol)
+
+        # Up to MAX_NEW_LONGS_PER_CYCLE new longs per cycle; prefer symbol from asset-class rotation
+        max_longs = max(1, getattr(self.config, "MAX_NEW_LONGS_PER_CYCLE", 1))
+        remaining_buys = list(buy_symbols)
+        for _ in range(min(max_longs, len(remaining_buys))):
+            if not can_trade or not remaining_buys:
+                break
+            can_trade = self._can_trade()
+            if not can_trade:
+                break
+            positions = self.broker.get_positions()
+            classes = self._asset_class_buy_rotation
+            idx = self._last_buy_class_index % len(classes) if classes else 0
+            preferred_class = classes[idx]
+            chosen = None
+            for sym in remaining_buys:
+                if asset_type(sym) == preferred_class:
+                    chosen = sym
+                    break
+            if chosen is None:
+                chosen = remaining_buys[0]
+            else:
+                self._last_buy_class_index = (idx + 1) % len(classes)
+            remaining_buys.remove(chosen)
+            qty = self._compute_qty(chosen, "buy")
+            try:
+                self.broker.submit_order(chosen, qty, "buy")
+                with self._lock:
+                    hist_chosen = list(self._bar_history.get(chosen, []))
+                bar_chosen = self._bar_buffer.get(chosen)
+                ctx = get_signal_context(chosen, bar_chosen, self.broker, bar_history=hist_chosen, config=self.config) if get_signal_context and bar_chosen else None
+                self._record_trade(chosen, "buy", qty, "entry_long", bar_data=bar_chosen, signal_context=ctx)
+                self._record_position_entry_now(chosen)
+                self._log_ui(f"Buy (long) {qty} {chosen}", "green")
+            except Exception as e:
+                self._log_ui(f"Buy failed {chosen}: {e}", "red")
+
+        # Up to MAX_NEW_SHORTS_PER_CYCLE new shorts per cycle; same asset-class rotation
+        max_shorts = max(1, getattr(self.config, "MAX_NEW_SHORTS_PER_CYCLE", 1))
+        remaining_sells = list(sell_symbols)
+        for _ in range(min(max_shorts, len(remaining_sells))):
+            if not can_trade or not remaining_sells:
+                break
+            can_trade = self._can_trade()
+            if not can_trade:
+                break
+            positions = self.broker.get_positions()
+            classes = self._asset_class_buy_rotation
+            idx = self._last_buy_class_index % len(classes) if classes else 0
+            preferred_class = classes[idx]
+            chosen = None
+            for sym in remaining_sells:
+                if asset_type(sym) == preferred_class:
+                    chosen = sym
+                    break
+            if chosen is None:
+                chosen = remaining_sells[0]
+            else:
+                self._last_buy_class_index = (idx + 1) % len(classes)
+            remaining_sells.remove(chosen)
+            qty = self._compute_qty(chosen, "sell")
+            try:
+                self.broker.submit_order(chosen, qty, "sell")
+                with self._lock:
+                    hist_chosen = list(self._bar_history.get(chosen, []))
+                bar_chosen = self._bar_buffer.get(chosen)
+                ctx = get_signal_context(chosen, bar_chosen, self.broker, bar_history=hist_chosen, config=self.config) if get_signal_context and bar_chosen else None
+                self._record_trade(chosen, "sell", qty, "entry_short", bar_data=bar_chosen, signal_context=ctx)
+                self._record_position_entry_now(chosen)
+                self._log_ui(f"Sell (short) {qty} {chosen}", "red")
+            except Exception as e:
+                self._log_ui(f"Short failed {chosen}: {e}", "red")
+
+        if focus_results:
+            parts = [f"{s} {sig}" for s, sig in focus_results]
+            trades = sum(1 for _, sig in focus_results if sig in ("buy", "sell"))
+            msg = f"Focus: {', '.join(parts)}"
+            if trades:
+                msg += f" ({trades} trade(s))"
+            self._log_ui(msg, "info")
+
+    def stop(self) -> None:
+        self._running = False
+        with self._lock:
+            self._bar_buffer.clear()
+            self._bar_history.clear()
+            self._position_entry_time.clear()

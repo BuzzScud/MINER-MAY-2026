@@ -27,7 +27,13 @@ export function AuthProvider({ children }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     });
-    const data = await res.json();
+    const text = await res.text();
+    let data;
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      throw new Error(res.ok ? 'Invalid response from server' : 'Login failed. Check that the API server is running.');
+    }
     if (!res.ok) throw new Error(data.error || 'Login failed');
     setToken(data.token);
     setUser(data.user);
@@ -41,7 +47,13 @@ export function AuthProvider({ children }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     });
-    const data = await res.json();
+    const text = await res.text();
+    let data;
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      throw new Error(res.ok ? 'Invalid response from server' : 'Registration failed. Check that the API server is running.');
+    }
     if (!res.ok) throw new Error(data.error || 'Registration failed');
     setToken(data.token);
     setUser(data.user);
@@ -62,14 +74,19 @@ export function AuthProvider({ children }) {
     fetch('/api/auth/me', {
       headers: { Authorization: `Bearer ${stored}` },
     })
-      .then((res) => {
+      .then(async (res) => {
         if (res.status === 401) {
           localStorage.removeItem(TOKEN_KEY);
           setTokenState(null);
           setUser(null);
           return null;
         }
-        return res.json();
+        const text = await res.text();
+        try {
+          return text ? JSON.parse(text) : null;
+        } catch {
+          return null;
+        }
       })
       .then((data) => {
         if (data?.user) {
@@ -89,10 +106,8 @@ export function AuthProvider({ children }) {
     if (!token) return;
     const interval = setInterval(() => {
       fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
-        .then((res) => {
-          if (res.status === 401) {
-            setToken(null);
-          }
+        .then(async (res) => {
+          if (res.status === 401) setToken(null);
         })
         .catch(() => {});
     }, 5000);

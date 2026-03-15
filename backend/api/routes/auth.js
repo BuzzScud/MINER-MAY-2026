@@ -6,6 +6,27 @@ import { pool } from '../db.js';
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 
+function getClientIp(req) {
+  const forwarded = req.get('x-forwarded-for');
+  if (forwarded) {
+    const first = forwarded.split(',')[0]?.trim();
+    if (first) return first;
+  }
+  return req.ip || req.socket?.remoteAddress || req.connection?.remoteAddress || null;
+}
+
+async function logLoginAttempt(username, success, req) {
+  try {
+    const ip = getClientIp(req);
+    await pool.query(
+      'INSERT INTO login_attempts (username, success, ip_address) VALUES ($1, $2, $3)',
+      [username ?? null, !!success, ip]
+    );
+  } catch (e) {
+    console.error('Login attempt log error:', e.message);
+  }
+}
+
 async function getEmergencyLogoutGeneration() {
   const r = await pool.query('SELECT generation FROM emergency_logout WHERE id = 1');
   return r.rows[0]?.generation ?? 0;
@@ -75,15 +96,28 @@ router.post('/login', async (req, res) => {
     );
     const user = result.rows[0];
     if (!user) {
+      await logLoginAttempt(usernameTrimmed, false, req);
       return res.status(401).json({ error: 'Invalid username or password' });
     }
     if (!user.is_active) {
+      await logLoginAttempt(usernameTrimmed, false, req);
       return res.status(401).json({ error: 'Account is disabled' });
     }
     const ok = await bcrypt.compare(String(password), user.password_hash);
     if (!ok) {
+      await logLoginAttempt(usernameTrimmed, false, req);
       return res.status(401).json({ error: 'Invalid username or password' });
     }
+    const maintenanceRow = await pool.query(
+      'SELECT value FROM system_settings WHERE key = $1',
+      ['maintenance_mode']
+    );
+    const maintenanceMode = maintenanceRow.rows[0]?.value === true;
+    if (maintenanceMode && !user.is_admin) {
+      await logLoginAttempt(usernameTrimmed, false, req);
+      return res.status(503).json({ error: 'Maintenance in progress. Try again later.' });
+    }
+    await logLoginAttempt(usernameTrimmed, true, req);
     const logoutGen = await getEmergencyLogoutGeneration();
     const token = generateToken(user, logoutGen);
     res.json({
@@ -95,6 +129,8 @@ router.post('/login', async (req, res) => {
       },
     });
   } catch (err) {
+    const usernameAttempt = req.body?.username ? String(req.body.username).trim() : null;
+    if (usernameAttempt) logLoginAttempt(usernameAttempt, false, req).catch(() => {});
     console.error('Login error:', err);
     res.status(500).json({ error: 'Login failed' });
   }

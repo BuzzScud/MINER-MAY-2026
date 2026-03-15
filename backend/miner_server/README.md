@@ -68,7 +68,25 @@ To verify the miner build, from project root run:
 ./verify_miner_build.sh
 ```
 
-This runs the miner test suite (unit tests, thesis mining, quadrant partition). Exit 0 means all tests passed.
+Or run the full miner test suite directly:
+
+```bash
+npm run test:miner
+```
+
+From `backend/miner_server`:
+
+```bash
+bash run_tests.sh
+```
+
+This runs the default suite: unit tests (block build, genesis hash, merkle, config, address), thesis mining (seed prime, candidate list, quadrant), nonce log, quadrant partition, and partition candidates (4-worker quadrant and 8-worker chunk over the full candidate set). Exit 0 means all tests passed.
+
+**E2E test (optional):** `test_regtest_e2e.py` validates the full pipeline against a real regtest node (start bitcoind, mine one block with `run_mining_loop_unified`, verify block accepted). It is not run by `run_tests.sh`. It requires **Bitcoin Core regtest binaries** (`bitcoind` and `bitcoin-cli` on PATH, or set `BITCOIND_PATH` and `BITCOIN_CLI_PATH`). Run when bitcoind is available:
+
+```bash
+cd backend/miner_server && python3 test_regtest_e2e.py
+```
 
 ## Usage
 
@@ -112,6 +130,8 @@ python miner_server/main.py --status --user user --password pass --network regte
 | `BTC_MINING_ACTIVITY_LOG` | Path to mining activity file (JSONL). When unset, defaults to `miner_server/data/mining_activity.log`. One line per stats update: `{"ts": "<iso>", "hashes": N, "blocks": B, "hashrate": H}`. Set to `0` or `off` to disable. | path or `0`/`off` |
 | `BTC_NONCE_LOG_PATH` | Path to nonce log (JSONL). Default: `miner_server/data/nonces_tried.json`. One line per round: `timestamp_iso`, `height`, `bits`, `base_nonce`, `recovery_nonce`, `minimal_nonces`, `candidate_count`, `nonce_sample` (first/last 20). | path |
 | `BTC_DISABLE_NONCE_LOG` | Set to `1` to disable writing the nonce log. | `0` (default) or `1` |
+| `BTC_ENTROPY_CUT_MIN`   | Entropy bounds (thesis tuning): min factor 0–1. Default 0.18. | `0.18` |
+| `BTC_ENTROPY_CUT_MAX`   | Entropy bounds: max factor 0–1. Default 0.45. | `0.45` |
 
 ## Process count and efficiency
 
@@ -174,6 +194,10 @@ After a block is found, check balance:
 ```bash
 bitcoin-cli -regtest getbalance
 ```
+
+## C math path (optional)
+
+The miner loads C libs (libalgorithms for base nonce and candidate list) only when a directory named **`c. math`** (with a space) exists at **project root** or **parent of backend**. It looks for `c. math/algorithms` and loads `libalgorithms.dylib` or `libalgorithms.so` from there. The **reference C implementation** lives in the repo at `archive/source-projects/MINER - 2026 /c. math/`. To use C acceleration without changing the main tree, copy or symlink that folder to the project root (or parent of `backend`) so the miner can find it. If `c. math` is not found, the miner runs **Python-only** (thesis_mining pure Python); no C libs are required for correct behavior.
 
 ## Troubleshooting: process quits unexpectedly
 

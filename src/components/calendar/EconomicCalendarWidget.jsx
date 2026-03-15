@@ -8,11 +8,10 @@ function EconomicCalendarWidget({ width = "100%", height = 550, colorTheme = "da
   const container = useRef();
 
   useEffect(() => {
-    // Clean up any existing content
-    if (container.current) {
-      container.current.innerHTML = '';
-    }
+    const el = container.current;
+    if (!el || !document.body.contains(el)) return;
 
+    el.innerHTML = '';
     const widgetContainer = document.createElement("div");
     widgetContainer.className = "tradingview-widget-container__widget";
 
@@ -30,16 +29,16 @@ function EconomicCalendarWidget({ width = "100%", height = 550, colorTheme = "da
       countryFilter: "ar,au,br,ca,cn,fr,de,in,id,it,jp,kr,mx,ru,sa,za,tr,gb,us,eu"
     });
 
-    if (container.current) {
-      container.current.appendChild(widgetContainer);
-      container.current.appendChild(script);
-    }
+    el.appendChild(widgetContainer);
+    el.appendChild(script);
 
-    // Cleanup function
     return () => {
-      if (container.current) {
-        container.current.innerHTML = '';
-      }
+      const target = container.current;
+      if (!target) return;
+      // Delay clear so TradingView script (runs async) does not run after DOM is cleared
+      setTimeout(() => {
+        if (target.parentNode) target.innerHTML = '';
+      }, 150);
     };
   }, [width, height, colorTheme]);
 

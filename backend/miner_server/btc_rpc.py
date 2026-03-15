@@ -3,6 +3,7 @@ Bitcoin Core JSON-RPC client.
 getblocktemplate, submitblock, getblockchaininfo; auth via user/pass.
 """
 import json
+import socket
 import urllib.request
 import urllib.error
 from typing import Any, Optional
@@ -66,6 +67,14 @@ def _rpc_call(config: MinerConfig, method: str, params: Optional[list] = None) -
                 "Connection refused. Is Bitcoin Core running? Start Bitcoin-Qt or bitcoind. Mainnet uses port 8332; ensure server=1 (and rpcallowip if needed) in bitcoin.conf.",
             )
         raise BitcoinRPCError(-1, reason)
+    except socket.timeout:
+        raise BitcoinRPCError(-1, "RPC request timed out. Bitcoin Core may be busy or unresponsive.")
+    except BrokenPipeError:
+        raise BitcoinRPCError(-1, "Broken pipe writing to Bitcoin Core RPC. Connection was reset.")
+    except ConnectionResetError:
+        raise BitcoinRPCError(-1, "Connection reset by Bitcoin Core. Node may be restarting or overloaded.")
+    except OSError as e:
+        raise BitcoinRPCError(-1, f"OS-level network error: {e}")
 
     if "error" in out and out["error"] is not None:
         err = out["error"]

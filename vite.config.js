@@ -33,6 +33,8 @@ export default defineConfig(({ command }) => ({
     strictPort: true,
     open: false,
     proxy: {
+      '/api/sentiment': { target: 'http://localhost:8000', changeOrigin: true },
+      '/api/composite': { target: 'http://localhost:8000', changeOrigin: true },
       '/api/yahoo': {
         target: 'https://query1.finance.yahoo.com',
         changeOrigin: true,
@@ -73,6 +75,8 @@ export default defineConfig(({ command }) => ({
       '/api/auth': { target: 'http://localhost:4000', changeOrigin: true },
       '/api/data': { target: 'http://localhost:4000', changeOrigin: true },
       '/api/admin': { target: 'http://localhost:4000', changeOrigin: true },
+      '/api/settings': { target: 'http://localhost:4000', changeOrigin: true },
+      '/api/sentiment-backend': { target: 'http://localhost:4000', changeOrigin: true },
       '/api/miner': {
         target: 'http://127.0.0.1:5001',
         changeOrigin: false,
@@ -90,11 +94,16 @@ export default defineConfig(({ command }) => ({
       '/api/symbols': { target: 'http://127.0.0.1:8080', changeOrigin: false },
       '/api/timeframe': { target: 'http://127.0.0.1:8080', changeOrigin: false },
       '/api/feed': { target: 'http://127.0.0.1:8080', changeOrigin: false },
-      '/api/settings': { target: 'http://127.0.0.1:8080', changeOrigin: false },
       '/api/strategies': { target: 'http://127.0.0.1:8080', changeOrigin: false },
       '/api/strategy': { target: 'http://127.0.0.1:8080', changeOrigin: false },
       '/api/broker': { target: 'http://127.0.0.1:8080', changeOrigin: false },
       '/api/backtest': { target: 'http://127.0.0.1:8080', changeOrigin: false },
     },
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './vitest.setup.js',
+    exclude: ['**/node_modules/**', '**/backend/**'],
   },
 }))

@@ -2,18 +2,47 @@ import { Outlet } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import Sidebar from '../components/sidebar/Sidebar';
 import { useSettings } from '../contexts/SettingsContext';
+import { usePublicSettings } from '../contexts/PublicSettingsContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useStorage } from '../utils/storage';
 import { setMonitorStorageAdapter } from '../services/monitorService';
+
+const ANNOUNCEMENT_DISMISSED_KEY = 'announcement_dismissed';
 
 function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { generalSettings } = useSettings();
+  const { maintenanceMode, announcement } = usePublicSettings();
+  const { user } = useAuth();
   const { getItem, setItem } = useStorage();
+  const [announcementDismissed, setAnnouncementDismissed] = useState(null);
+  const isAdmin = user?.is_admin === true;
+  const showMaintenance = maintenanceMode && !isAdmin;
+  const showAnnouncement = announcement?.active && announcement?.text && announcementDismissed !== announcement.text;
 
   useEffect(() => {
     setMonitorStorageAdapter({ getItem, setItem });
     return () => setMonitorStorageAdapter(null);
   }, [getItem, setItem]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(ANNOUNCEMENT_DISMISSED_KEY);
+      setAnnouncementDismissed(stored ?? '');
+    } catch {
+      setAnnouncementDismissed('');
+    }
+  }, [announcement?.text]);
+
+  const dismissAnnouncement = () => {
+    if (announcement?.text) {
+      try {
+        localStorage.setItem(ANNOUNCEMENT_DISMISSED_KEY, announcement.text);
+        setAnnouncementDismissed(announcement.text);
+      } catch {}
+    }
+  };
+
   const compactMode = generalSettings?.compactMode ?? false;
 
   const toggleSidebar = () => {
@@ -48,11 +77,35 @@ function MainLayout() {
     };
   }, [sidebarOpen]);
 
+  if (showMaintenance) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+        <div className="text-center max-w-md">
+          <h1 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">Under maintenance</h1>
+          <p className="text-gray-600 dark:text-gray-400">We will be back shortly. Try again later.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden"
       data-compact={compactMode ? '' : undefined}
     >
+      {showAnnouncement && (
+        <div className="sticky top-0 left-0 right-0 z-30 flex items-center justify-between gap-3 bg-amber-500/90 dark:bg-amber-600/90 text-gray-900 px-4 py-2 text-sm">
+          <p className="flex-1 min-w-0">{announcement.text}</p>
+          <button
+            type="button"
+            onClick={dismissAnnouncement}
+            className="shrink-0 px-2 py-1 rounded hover:bg-black/10 font-medium"
+            aria-label="Dismiss announcement"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <div className="sticky top-0 inset-x-0 z-20 bg-white dark:bg-gray-900 border-y border-gray-200 dark:border-gray-700 px-4 sm:px-6 md:px-8 lg:hidden flex-shrink-0">
@@ -88,9 +141,11 @@ function MainLayout() {
           </div>
         </div>
         <div
-          className={`flex-1 overflow-y-auto min-h-0 ${compactMode ? 'p-3 sm:p-4 lg:p-5' : 'p-4 sm:p-6 lg:p-8'}`}
+          className={`flex-1 overflow-y-auto min-h-0 flex flex-col ${compactMode ? 'p-3 sm:p-4 lg:p-5' : 'p-4 sm:p-6 lg:p-8'}`}
         >
-          <Outlet />
+          <div className="w-full max-w-[1800px] mx-auto flex flex-col flex-1 min-h-0 min-w-0">
+            <Outlet />
+          </div>
         </div>
       </main>
     </div>

@@ -38,9 +38,8 @@ export function TradingBotView() {
     try {
       const s = await api.getSettings();
       state.setSettings(s != null && typeof s === 'object' ? s : {});
-    } catch (err) {
+    } catch {
       state.setSettings({});
-      throw err;
     }
   }, [state.setSettings]);
 

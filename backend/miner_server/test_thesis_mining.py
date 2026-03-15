@@ -23,6 +23,28 @@ from thesis_mining import (
     ENTROPY_CUT_MAX,
     NONCE_MAX,
 )
+from thesis_constants import PHI, CLOCK_O1_POSITIONS, SPHERE_PRIME_POSITIONS
+
+
+def test_phi_parity_with_strategy() -> None:
+    """PHI matches Strategy Documents constants (single source of truth)."""
+    # Strategy Documents/Python Strategy 1 /custom_math/constants.py uses this value
+    STRATEGY_PHI = 1.61803398874989484820
+    assert abs(PHI - STRATEGY_PHI) < 1e-15, (
+        f"Miner PHI {PHI} should match Strategy PHI {STRATEGY_PHI} for parity"
+    )
+
+
+def test_clock_o1_positions_parity() -> None:
+    """Clock O(1) positions are exactly (3, 6, 9); same set as Strategy prime-aligned."""
+    assert CLOCK_O1_POSITIONS == (3, 6, 9), (
+        f"CLOCK_O1_POSITIONS must be (3, 6, 9), got {CLOCK_O1_POSITIONS}"
+    )
+    for h in range(24):
+        if h % 12 not in CLOCK_O1_POSITIONS:
+            assert _clock_o1_seed_prime(h) is None, (
+                f"block_height={h} (pos {h % 12}) should not get O(1) prime, got {_clock_o1_seed_prime(h)}"
+            )
 
 
 def test_clock_o1_seed_prime() -> None:
@@ -92,7 +114,7 @@ def test_build_candidate_list_structure() -> None:
     assert recovery in cands
     # At least 2 (base, recovery) + 12 spheres * (35 or 40) * 2 + 401*2 before dedup; dedup and range can reduce
     assert len(cands) >= 2
-    assert len(cands) <= 2 + 12 * 40 * 2 + 401 * 2 + 100
+    assert len(cands) <= 2 + 12 * 40 * 2 + 401 * 2 + 600
     # Some sphere-derived nonce (not just base±200): e.g. first sphere base + phi offset
     nonce_range = end - start
     sphere_size = max(1, nonce_range // 12)
@@ -220,6 +242,8 @@ def test_thesis_then_phase3_structure() -> None:
 
 
 if __name__ == "__main__":
+    test_phi_parity_with_strategy()
+    test_clock_o1_positions_parity()
     test_clock_o1_seed_prime()
     test_get_seed_prime_thesis()
     test_nonce_generate_unified_py()

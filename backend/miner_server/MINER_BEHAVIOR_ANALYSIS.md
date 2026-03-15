@@ -22,6 +22,11 @@
 - **Mining log**: "New round: fetching template and mining." → "Template: height N, bits XXXXXXXX" → "Phase 1: trying 2 minimal nonce(s)." → "Phase 1: 2 hash(es), no solution." → "Phase 2: searching thesis candidates…" (and, with workers, "Phase 2: spawning N workers.").
 - **Stats**: Hashrate (H/s), Hashes, Nonce progress (% of 32‑bit), updating every few hundred hashes or every 0.5s.
 
+## Entropy bounds and recovery
+
+- **Entropy bounds** (`BTC_ENTROPY_CUT_MIN`, `BTC_ENTROPY_CUT_MAX`; default 0.18–0.45): Control how much the thesis nonce pipeline concentrates the search from the raw tetration output. Difficulty maps into this range (higher difficulty → higher entropy factor → more leading-zero bias). This is the miner’s “thesis tuning” for search concentration; it does not reduce the protocol nonce space (thesis ch.15 unbiased search is preserved).
+- **Recovery** (OBJECTIVE 28): When the recovery lib is available (`c. math`/librecovery_core), Phase 1 gets a second suggested nonce in addition to the deterministic base nonce. So the minimal set is 1–2 nonces before expanding to the full candidate list. Conceptually this is analogous to a “second opinion” before committing to the full search (strategy-side analogy only; mining logic is unchanged).
+
 ## Quick checklist
 
 | Check | Action |

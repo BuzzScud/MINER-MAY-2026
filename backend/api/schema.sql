@@ -42,3 +42,21 @@ CREATE TABLE IF NOT EXISTS emergency_logout (
 );
 
 INSERT INTO emergency_logout (id, generation) VALUES (1, 0) ON CONFLICT (id) DO NOTHING;
+
+-- system_settings: key-value for maintenance_mode, announcement, etc.
+CREATE TABLE IF NOT EXISTS system_settings (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- login_attempts: audit log for login success/failure
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id SERIAL PRIMARY KEY,
+  username TEXT,
+  success BOOLEAN NOT NULL,
+  ip_address TEXT,
+  timestamp TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_attempts_timestamp ON login_attempts(timestamp DESC);

@@ -87,6 +87,17 @@ This document describes the organization of the ALGONOV26 project.
 | `requirements.txt` | Python dependencies |
 | `README.md` | Backend setup notes |
 
+### `backend/api/` – Node API
+
+| Path | Purpose |
+|------|---------|
+| `server.js` | API entry (Express, port 4000) |
+| `startTime.js` | Process start time for uptime |
+| `db.js` | PostgreSQL connection and schema init |
+| `schema.sql` | DB schema (users, app_data, etc.) |
+| `routes/` | admin, auth, settings |
+| `scripts/restart-after-exit.js` | Detached restart script for admin restart |
+
 ### `public/`
 
 Static files served as-is (e.g. `vite.svg`, `.htaccess`).

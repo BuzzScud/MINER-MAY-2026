@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useStorage } from '../utils/storage';
 import { STORAGE_KEYS } from '../utils/storageKeys';
+import NotesCalendar from '../components/notes/NotesCalendar';
 
 const NOTE_COLORS = [
   { name: 'Blue', bg: 'from-blue-50 to-blue-100', border: 'border-blue-200', dark: 'dark:from-blue-900/20 dark:to-blue-800/20 dark:border-blue-800', text: 'text-blue-700 dark:text-blue-300' },
@@ -25,6 +26,9 @@ function Notes() {
   const [viewMode, setViewMode] = useState('grid');
   const [selectedNotes, setSelectedNotes] = useState([]);
   const [showStats, setShowStats] = useState(true);
+  const [activeTab, setActiveTab] = useState('notes');
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
+  const [selectedDateNotes, setSelectedDateNotes] = useState([]);
   const [noteTitle, setNoteTitle] = useState('');
   const [noteContent, setNoteContent] = useState('');
   const [noteTags, setNoteTags] = useState([]);
@@ -32,6 +36,19 @@ function Notes() {
   const [selectedColor, setSelectedColor] = useState(NOTE_COLORS[0]);
   const [lastSaved, setLastSaved] = useState(null);
   const fileInputRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const modalRef = useRef(null);
+
+  const handleCloseModal = useCallback(() => {
+    setIsModalOpen(false);
+    setEditingNote(null);
+    setNoteTitle('');
+    setNoteContent('');
+    setNoteTags([]);
+    setTagInput('');
+    setSelectedColor(NOTE_COLORS[0]);
+    setError(null);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,7 +76,7 @@ function Notes() {
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [isModalOpen]);
+  }, [isModalOpen, handleCloseModal]);
 
   // Save notes whenever notes change
   useEffect(() => {
@@ -77,6 +94,42 @@ function Notes() {
     if (loading) return;
     setItem(STORAGE_KEYS.NOTES_VIEW_PREFS, { sortBy, filterTag, viewMode, showStats }).catch(() => {});
   }, [sortBy, filterTag, viewMode, showStats, setItem, loading]);
+
+  // Auto-dismiss error after 5 seconds so UI does not stay in error state
+  useEffect(() => {
+    if (!error) return;
+    const timer = setTimeout(() => setError(null), 5000);
+    return () => clearTimeout(timer);
+  }, [error]);
+
+  // Modal focus trap: keep Tab inside modal when open
+  useEffect(() => {
+    if (!isModalOpen || !modalRef.current) return;
+    const el = modalRef.current;
+    const focusableSelector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusable = [...el.querySelectorAll(focusableSelector)].filter(
+      (node) => node.offsetParent != null
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const handleKeyDown = (e) => {
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    el.addEventListener('keydown', handleKeyDown);
+    return () => el.removeEventListener('keydown', handleKeyDown);
+  }, [isModalOpen]);
 
   // Get all unique tags from notes
   const allTags = useMemo(() => {
@@ -287,17 +340,6 @@ function Notes() {
     }
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingNote(null);
-    setNoteTitle('');
-    setNoteContent('');
-    setNoteTags([]);
-    setTagInput('');
-    setSelectedColor(NOTE_COLORS[0]);
-    setError(null);
-  };
-
   const toggleSelectNote = (id) => {
     setSelectedNotes(prev => 
       prev.includes(id) 
@@ -326,7 +368,7 @@ function Notes() {
     setNoteTags(prev => prev.filter(tag => tag !== tagToRemove));
   };
 
-  const handleTagInputKeyPress = (e) => {
+  const handleTagInputKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       addTag();
@@ -356,30 +398,69 @@ function Notes() {
     });
   };
 
+  const formatLastSaved = (date) => {
+    if (!date) return null;
+    const d = new Date(date);
+    const now = new Date();
+    const diffMs = now - d;
+    if (diffMs < 60000) return 'Just now';
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  };
+
   const charCount = (noteTitle || '').length + (noteContent || '').length;
   const wordCount = (noteTitle + ' ' + noteContent).trim().split(/\s+/).filter(Boolean).length;
 
+  const handleCalendarDateSelect = useCallback((date, dayNotes) => {
+    setSelectedCalendarDate(date);
+    setSelectedDateNotes(dayNotes);
+  }, []);
+
   return (
-    <div className="w-full max-w-7xl mx-auto">
+    <div className="w-full max-w-[1800px] mx-auto flex flex-col space-y-6">
       {/* Breadcrumb & Header */}
-      <div className="mb-6">
-        <nav className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
+      <div>
+        <nav className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
           <Link to="/" className="hover:text-sky-400 dark:hover:text-sky-300 transition-colors">Dashboard</Link>
           <span>/</span>
           <span className="font-medium text-gray-900 dark:text-white">Notes</span>
         </nav>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-2">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1">Notes</h1>
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Create, organize, and manage your notes with tags, colors, and pins
             </p>
+            {/* Tab view */}
+            <div className="flex gap-1 mt-4">
+              <button
+                type="button"
+                onClick={() => setActiveTab('notes')}
+                className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                  activeTab === 'notes'
+                    ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border border-b-0 border-gray-200 dark:border-gray-700'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-transparent'
+                }`}
+              >
+                Notes
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('calendar')}
+                className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                  activeTab === 'calendar'
+                    ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border border-b-0 border-gray-200 dark:border-gray-700'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-transparent'
+                }`}
+              >
+                Calendar
+              </button>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                {lastSaved ? 'Auto-saved' : 'Ready'}
+                {lastSaved ? `Auto-saved at ${formatLastSaved(lastSaved)}` : 'Ready'}
               </span>
             </div>
             <input
@@ -395,6 +476,7 @@ function Notes() {
               onClick={() => fileInputRef.current?.click()}
               className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
               title="Import from JSON"
+              aria-label="Import notes from JSON file"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -406,6 +488,7 @@ function Notes() {
               onClick={exportData}
               className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
               title="Export to JSON"
+              aria-label="Export notes to JSON file"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -425,9 +508,49 @@ function Notes() {
           </div>
         </div>
 
+        {/* Tab content area */}
+        <div className="bg-white dark:bg-gray-800 rounded-b-lg rounded-tr-lg border border-gray-200 dark:border-gray-700 border-t-0 pt-4 -mt-[1px]">
+        {activeTab === 'calendar' ? (
+          <div className="space-y-6">
+            <NotesCalendar
+              notes={notes}
+              onDateSelect={handleCalendarDateSelect}
+              onNoteClick={handleEditNote}
+            />
+            {selectedCalendarDate && (
+              <div className="mt-6 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                  Notes for {selectedCalendarDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                </h3>
+                {selectedDateNotes.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No notes on this date. Create a note to see it here.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {selectedDateNotes.map((note) => {
+                      const color = note.color || NOTE_COLORS[0];
+                      return (
+                        <li key={note.id}>
+                          <button
+                            type="button"
+                            onClick={() => handleEditNote(note)}
+                            className={`w-full text-left p-3 rounded-lg border ${color.border} ${color.dark} hover:opacity-90 transition-opacity bg-gradient-to-br ${color.bg} ${color.dark}`}
+                          >
+                            <span className="font-medium text-gray-900 dark:text-white">{note.title || 'Untitled'}</span>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{note.content || 'No content'}</p>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+        <>
         {/* Statistics Cards */}
         {showStats && notes.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-6">
             <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Total Notes</span>
@@ -493,15 +616,29 @@ function Notes() {
             {/* Search */}
             <div className="flex-1 relative">
               <input
+                ref={searchInputRef}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search notes by title, content, or tags..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                aria-label="Search notes by title, content, or tags"
               />
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  aria-label="Clear search"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
             </div>
 
             {/* Filters and Controls */}
@@ -510,7 +647,9 @@ function Notes() {
               <select
                 value={filterTag}
                 onChange={(e) => setFilterTag(e.target.value)}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                className="px-3 py-2 pr-9 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm appearance-none bg-no-repeat bg-[length:1.25rem_1.25rem] bg-[right_0.5rem_center] cursor-pointer [background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%236b7280%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] dark:[background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%239ca3af%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')]"
+                style={{ textDecoration: 'none' }}
+                aria-label="Filter by tag"
               >
                 <option value="all">All Tags</option>
                 {allTags.map(tag => (
@@ -522,7 +661,9 @@ function Notes() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                className="px-3 py-2 pr-9 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm appearance-none bg-no-repeat bg-[length:1.25rem_1.25rem] bg-[right_0.5rem_center] cursor-pointer [background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%236b7280%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] dark:[background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%239ca3af%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')]"
+                style={{ textDecoration: 'none' }}
+                aria-label="Sort notes"
               >
                 <option value="date">Sort by Date</option>
                 <option value="title">Sort by Title</option>
@@ -536,9 +677,10 @@ function Notes() {
                   onClick={() => setViewMode('grid')}
                   className={`p-2 rounded transition-colors ${viewMode === 'grid' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
                   title="Grid View"
+                  aria-label="Grid view"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
                   </svg>
                 </button>
                 <span className="text-gray-800 dark:text-gray-500">|</span>
@@ -547,6 +689,7 @@ function Notes() {
                   onClick={() => setViewMode('list')}
                   className={`p-2 rounded transition-colors ${viewMode === 'list' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
                   title="List View"
+                  aria-label="List view"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -560,6 +703,7 @@ function Notes() {
                 onClick={() => setShowStats(!showStats)}
                 className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                 title={showStats ? "Hide Statistics" : "Show Statistics"}
+                aria-label={showStats ? "Hide statistics" : "Show statistics"}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -593,7 +737,6 @@ function Notes() {
             </div>
           )}
         </div>
-      </div>
 
       {/* Error Message */}
       {error && (
@@ -615,6 +758,7 @@ function Notes() {
               type="button"
               onClick={() => setError(null)}
               className="text-red-600 dark:text-red-300 hover:text-red-800 dark:hover:text-red-100"
+              aria-label="Dismiss error"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -644,18 +788,32 @@ function Notes() {
             {searchQuery || filterTag !== 'all' ? 'No notes found' : 'No notes yet'}
           </h3>
           <p className="text-gray-500 dark:text-gray-400 mb-4">
-            {searchQuery || filterTag !== 'all' 
+            {searchQuery || filterTag !== 'all'
               ? 'Try adjusting your search or filter criteria'
               : 'Get started by creating your first note'}
           </p>
+          {notes.length > 0 && (searchQuery || filterTag !== 'all') && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Showing 0 of {notes.length} notes
+            </p>
+          )}
           {(!searchQuery && filterTag === 'all') && (
-            <button
-              type="button"
-              onClick={handleAddNote}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Create Note
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={handleAddNote}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Create Note
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Import notes
+              </button>
+            </div>
           )}
         </div>
       ) : (
@@ -874,30 +1032,35 @@ function Notes() {
             })}
           </div>
 
-          {/* Results Count */}
-          {filteredNotes.length !== notes.length && (
-            <div className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
-              Showing {filteredNotes.length} of {notes.length} notes
-            </div>
-          )}
+          {/* Results Count - always show */}
+          <div className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+            {filteredNotes.length === notes.length
+              ? `${notes.length} note${notes.length !== 1 ? 's' : ''}`
+              : `Showing ${filteredNotes.length} of ${notes.length} notes`}
+          </div>
         </>
       )}
+        </>
+      ) }
+        </div>
+        </div>
 
       {/* Add/Edit Note Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity bg-gray-900/60 backdrop-blur-sm" onClick={handleCloseModal} aria-hidden="true"></div>
-            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-gray-200 dark:border-gray-700">
+            <div ref={modalRef} className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-gray-200 dark:border-gray-700" role="dialog" aria-modal="true" aria-labelledby="notes-modal-title">
               <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  <h3 id="notes-modal-title" className="text-xl font-bold text-gray-900 dark:text-white">
                     {editingNote ? 'Edit Note' : 'New Note'}
                   </h3>
                   <button
                     type="button"
                     onClick={handleCloseModal}
                     className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    aria-label="Close modal"
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -956,6 +1119,7 @@ function Notes() {
                             type="button"
                             onClick={() => removeTag(tag)}
                             className="hover:text-blue-900 dark:hover:text-blue-100"
+                            aria-label={`Remove tag ${tag}`}
                           >
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -969,7 +1133,7 @@ function Notes() {
                         type="text"
                         value={tagInput}
                         onChange={(e) => setTagInput(e.target.value)}
-                        onKeyPress={handleTagInputKeyPress}
+                        onKeyDown={handleTagInputKeyDown}
                         placeholder="Add a tag and press Enter..."
                         className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                       />

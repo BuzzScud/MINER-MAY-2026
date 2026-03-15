@@ -1,0 +1,10 @@
+# Local env (contains secrets; do not commit)
+.env
+
+# Virtual env and IDE
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/

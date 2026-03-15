@@ -1,5 +1,5 @@
 import { NavLink, Link, useLocation } from 'react-router-dom';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStorage } from '../../utils/storage';
 import { STORAGE_KEYS } from '../../utils/storageKeys';
@@ -15,9 +15,8 @@ const ALL_PAGES = [
   { path: '/notes', label: 'Notes' },
   { path: '/calendar', label: 'Economic Calendar' },
   { path: '/trading', label: 'Charts' },
-  { path: '/projection', label: 'Projection' },
-  { path: '/fib-stuff', label: 'Fib Stuff' },
   { path: '/trading-bot', label: 'Trading Bot' },
+  { path: '/sentiment', label: 'Sentiment' },
   { path: '/budget-tracker', label: 'Budget Tracker' },
   { path: '/miner', label: 'Miner' },
   { path: '/api-monitor', label: 'API Monitor' },
@@ -29,7 +28,7 @@ const ICON_CLASS = 'w-4 h-4 shrink-0';
 const PAGE_ICONS = {
   '/': (
     <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2a2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2a2z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
     </svg>
   ),
   '/notes': (
@@ -47,19 +46,14 @@ const PAGE_ICONS = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
     </svg>
   ),
-  '/projection': (
-    <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-    </svg>
-  ),
-  '/fib-stuff': (
-    <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-    </svg>
-  ),
   '/trading-bot': (
     <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+    </svg>
+  ),
+  '/sentiment': (
+    <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm-3-7a3 3 0 01-3-3 3 3 0 013-3 3 3 0 013 3 3 3 0 01-3 3zm4-8a4 4 0 11-8 0 4 4 0 018 0z" />
     </svg>
   ),
   '/budget-tracker': (
@@ -87,10 +81,18 @@ const PAGE_ICONS = {
 
 function getDefaultSections() {
   return [
-    { id: 'dashboard', label: 'Dashboard', pagePaths: ['/', '/notes'] },
-    { id: 'uncategorized', label: null, pagePaths: ['/calendar', '/trading', '/projection', '/fib-stuff', '/trading-bot', '/budget-tracker', '/miner'] },
+    { id: 'dashboard', label: 'Dashboard', pagePaths: ['/', '/notes', '/calendar'] },
+    { id: 'markets', label: 'Markets', pagePaths: ['/trading-bot', '/sentiment', '/trading'] },
+    { id: 'crypto', label: 'Crypto', pagePaths: ['/miner'] },
+    { id: 'utilities', label: 'Utilities', pagePaths: ['/budget-tracker'] },
     { id: 'settings', label: 'Settings', pagePaths: ['/api-monitor', '/settings'] },
   ];
+}
+
+/** Old saves had only dashboard + uncategorized + settings; new default has markets, crypto, utilities. */
+function isLegacySidebarLayout(sections) {
+  const ids = new Set(sections.map((s) => s.id));
+  return !ids.has('markets') || !ids.has('crypto') || !ids.has('utilities');
 }
 
 function parseSections(saved) {
@@ -115,6 +117,9 @@ function parseSections(saved) {
         if (!hasUncategorized) {
           const uncatPaths = [...allPaths].filter((p) => !seen.has(p));
           sections.push({ id: 'uncategorized', label: null, pagePaths: uncatPaths });
+        }
+        if (isLegacySidebarLayout(sections)) {
+          return { sections: getDefaultSections(), collapsedSectionIds: [] };
         }
         return { sections, collapsedSectionIds: Array.isArray(parsed.collapsedSectionIds) ? parsed.collapsedSectionIds : [] };
       }
@@ -254,14 +259,22 @@ function Sidebar({ isOpen, onClose }) {
     return () => { cancelled = true; };
   }, [getItem]);
 
+  const saveTimeoutRef = useRef(null);
   useEffect(() => {
     if (!navLoaded) return;
-    if (loadFailed && !hasUserEdited) return;
-    setItem(SIDEBAR_NAV_KEY, {
-      sections,
-      collapsedSectionIds: Array.from(collapsedSectionIds),
-    }).catch(() => {});
-  }, [sections, collapsedSectionIds, setItem, navLoaded, loadFailed, hasUserEdited]);
+    const SIDEBAR_SAVE_DEBOUNCE_MS = 400;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      saveTimeoutRef.current = null;
+      setItem(SIDEBAR_NAV_KEY, {
+        sections,
+        collapsedSectionIds: Array.from(collapsedSectionIds),
+      }).catch(() => {});
+    }, SIDEBAR_SAVE_DEBOUNCE_MS);
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [sections, collapsedSectionIds, setItem, navLoaded]);
 
   useEffect(() => {
     if (darkMode) {

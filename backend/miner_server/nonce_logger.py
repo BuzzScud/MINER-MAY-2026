@@ -43,10 +43,14 @@ def log_nonce_round(
     minimal_nonces: List[int],
     candidate_count: int,
     candidates: Optional[List[int]] = None,
+    *,
+    base_nonce_source: Optional[str] = None,
+    seed_prime_path: Optional[str] = None,
 ) -> None:
     """
     Append one round of nonce data to the log file.
     Call after building the candidate list for the round.
+    Optionally include thesis context: base_nonce_source (c/python), seed_prime_path (clock_o1/sft).
     """
     path = get_nonce_log_path()
     if not path:
@@ -61,6 +65,10 @@ def log_nonce_round(
         "minimal_nonces": minimal_nonces,
         "candidate_count": candidate_count,
     }
+    if base_nonce_source is not None:
+        payload["base_nonce_source"] = base_nonce_source
+    if seed_prime_path is not None:
+        payload["seed_prime_path"] = seed_prime_path
     if candidates is not None:
         payload["nonce_sample"] = _sample_nonces(candidates)
     line = json.dumps(payload) + "\n"

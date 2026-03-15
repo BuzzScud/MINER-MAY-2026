@@ -1,6 +1,7 @@
 """
 Build block from getblocktemplate, nonce iteration, difficulty check, submitblock.
-On Apple Silicon (M2 Mac Mini), uses spawn context and scaled progress interval.
+On macOS, uses forkserver context to avoid broken-pipe errors when spawning workers
+from a Flask thread that is itself a child of a Node.js process (inherited FDs).
 
 Search space: Bitcoin uses a 32-bit nonce in the block header. We correctly iterate
 the full range [0, 0xFFFFFFFF] without reducing the space. The thesis (ch. 15) notes
@@ -24,6 +25,7 @@ from typing import Any, Callable, Optional
 from config import MinerConfig, phase3_nonces_per_worker
 from btc_rpc import getblocktemplate, submitblock, BitcoinRPCError
 from address import address_to_script_pubkey
+from hasher_bridge import scan_batch as _c_scan_batch, scan_list as _c_scan_list, is_available as _c_hasher_available, get_hasher_source
 from nonce_logger import log_nonce_round
 from thesis_mining import (
     bits_compact_to_difficulty_bits,
@@ -31,6 +33,8 @@ from thesis_mining import (
     recovery_suggested_nonce,
     build_candidate_list,
     get_minimal_nonce_list,
+    get_base_nonce_source,
+    get_last_seed_prime_path,
     quadrant_from_nonce,
 )
 
@@ -61,6 +65,7 @@ def _varint(n: int) -> bytes:
 
 
 def _double_sha256(data: bytes) -> bytes:
+    """Bitcoin consensus hash: SHA256(SHA256(data)). Kept minimal for inner-loop speed."""
     return hashlib.sha256(hashlib.sha256(data).digest()).digest()
 
 
@@ -208,6 +213,20 @@ def _build_block_header(
     )
 
 
+def _build_header_template(
+    version: int,
+    prev_block_hash_hex: str,
+    merkle_root: bytes,
+    time_val: int,
+    bits_hex: str,
+) -> bytes:
+    """Build 80-byte header template with nonce=0 for C batch scanner."""
+    return _build_block_header(version, prev_block_hash_hex, merkle_root, time_val, bits_hex, 0)
+
+
+C_SCAN_CHUNK = 1_000_000
+
+
 def _build_block(
     template: dict,
     script_pubkey: bytes,
@@ -281,9 +300,13 @@ def run_mining_loop(
     tx_raws_for_block = []
     for tx in transactions:
         data_hex = tx.get("data")
+        txid_hex = tx.get("txid")
         if data_hex:
             tx_raw = bytes.fromhex(data_hex)
-            tx_hashes.append(_double_sha256(tx_raw))
+            if txid_hex:
+                tx_hashes.append(bytes.fromhex(txid_hex)[::-1])
+            else:
+                tx_hashes.append(_double_sha256(tx_raw))
             tx_raws_for_block.append(tx_raw)
 
     merkle_root = _merkle_root(tx_hashes)
@@ -291,7 +314,7 @@ def run_mining_loop(
     hashes_done = 0
     # Full 32-bit nonce space per Bitcoin protocol; do not reduce (thesis ch.15: unbiased search).
     nonce_start = 0
-    nonce_end = 0xFFFFFFFF
+    nonce_end = 0x100000000
     bits_le = struct.pack("<I", int(bits_hex, 16))
 
     if on_log:
@@ -372,14 +395,20 @@ def run_mining_loop_unified(
     bits_bytes = bytes.fromhex(bits_hex)
     difficulty_bits = bits_compact_to_difficulty_bits(bits_int)
 
-    # Pre-hash transaction data (unchanged across timestamp/extra-nonce rolls)
+    # Pre-compute txid hashes for merkle root (unchanged across timestamp/extra-nonce rolls).
+    # getblocktemplate "data" is full witness serialization for segwit txs; hashing it yields
+    # wtxid, not txid.  The "txid" field is the correct non-witness hash for the merkle tree.
     tx_raws_for_block: list[bytes] = []
     tx_hashes_no_coinbase: list[bytes] = []
     for tx in transactions:
         data_hex = tx.get("data")
+        txid_hex = tx.get("txid")
         if data_hex:
             tx_raw = bytes.fromhex(data_hex)
-            tx_hashes_no_coinbase.append(_double_sha256(tx_raw))
+            if txid_hex:
+                tx_hashes_no_coinbase.append(bytes.fromhex(txid_hex)[::-1])
+            else:
+                tx_hashes_no_coinbase.append(_double_sha256(tx_raw))
             tx_raws_for_block.append(tx_raw)
 
     def _rebuild_coinbase_and_merkle(extra_nonce_bytes: Optional[bytes] = None) -> tuple[bytes, bytes, bytes]:
@@ -441,7 +470,13 @@ def run_mining_loop_unified(
     log_nonce_round(
         height, bits_hex, base_nonce, recovery_nonce,
         minimal_nonces, len(candidates), candidates,
+        base_nonce_source=get_base_nonce_source(),
+        seed_prime_path=get_last_seed_prime_path(),
     )
+    if on_log:
+        on_log(
+            f"Thesis: base={get_base_nonce_source()} seed={get_last_seed_prime_path() or 'n/a'} candidates={len(candidates)}"
+        )
 
     if config.num_workers > 1:
         return _run_mining_loop_unified_mp(
@@ -470,27 +505,28 @@ def run_mining_loop_unified(
     phase3_count = phase3_nonces_per_worker()
     current_time = curtime
     extra_nonce_counter = 0
+    use_c = _c_hasher_available()
 
     while True:
         if stop_flag and stop_flag():
             break
 
-        # Phase 2: thesis candidates
+        hdr_tpl = _build_header_template(version, prev_hex, merkle_root, current_time, bits_hex)
+
+        # Phase 2: thesis candidates (C batch or Python loop)
         if on_log and current_time == curtime:
-            on_log("Phase 2: searching thesis candidates.")
-        for nonce in candidates:
-            if stop_flag and stop_flag():
-                break
-            header = _build_block_header(
-                version, prev_hex, merkle_root, current_time, bits_hex, nonce
-            )
-            h = _double_sha256(header)
-            hashes_done += 1
+            src = get_hasher_source()
+            on_log(f"Phase 2: searching {len(candidates)} thesis candidates (hasher={src}).")
+        if use_c:
+            hit = _c_scan_list(hdr_tpl, target, candidates)
+            hashes_done += len(candidates)
             if on_hash:
                 on_hash(hashes_done)
-            if _hash_meets_target(h, target):
+            if hit is not None:
+                winning_nonce, _idx = hit
                 if on_log:
-                    on_log(f"Phase 2: solution found (total {hashes_done} hashes).")
+                    on_log(f"Phase 2: solution nonce={winning_nonce} (total {hashes_done} hashes).")
+                header = _build_block_header(version, prev_hex, merkle_root, current_time, bits_hex, winning_nonce)
                 n_tx = 1 + len(tx_raws_for_block)
                 full_block = header + _varint(n_tx) + coinbase_for_block + b"".join(tx_raws_for_block)
                 result = submitblock(config, full_block.hex())
@@ -499,16 +535,10 @@ def run_mining_loop_unified(
                 elif on_log:
                     on_log(f"Submit block rejected: {result}")
                 return hashes_done, blocks_found
-
-        # Phase 3: linear sweep
-        if phase3_count > 0:
-            if on_log and current_time == curtime:
-                on_log(f"Phase 3: linear sweep ({phase3_count} nonces).")
-            sweep_start = (base_nonce + extra_nonce_counter * phase3_count) & 0xFFFFFFFF
-            for i in range(phase3_count):
+        else:
+            for nonce in candidates:
                 if stop_flag and stop_flag():
                     break
-                nonce = (sweep_start + i) & 0xFFFFFFFF
                 header = _build_block_header(
                     version, prev_hex, merkle_root, current_time, bits_hex, nonce
                 )
@@ -518,7 +548,7 @@ def run_mining_loop_unified(
                     on_hash(hashes_done)
                 if _hash_meets_target(h, target):
                     if on_log:
-                        on_log(f"Phase 3: solution found (total {hashes_done} hashes).")
+                        on_log(f"Phase 2: solution found (total {hashes_done} hashes).")
                     n_tx = 1 + len(tx_raws_for_block)
                     full_block = header + _varint(n_tx) + coinbase_for_block + b"".join(tx_raws_for_block)
                     result = submitblock(config, full_block.hex())
@@ -528,10 +558,64 @@ def run_mining_loop_unified(
                         on_log(f"Submit block rejected: {result}")
                     return hashes_done, blocks_found
 
+        # Phase 3: linear sweep (C batch or Python loop)
+        if phase3_count > 0:
+            sweep_start = (base_nonce + extra_nonce_counter * phase3_count) & 0xFFFFFFFF
+            if on_log and current_time == curtime:
+                on_log(f"Phase 3: sweep {phase3_count:,} nonces from {sweep_start}.")
+            if use_c:
+                remaining = phase3_count
+                offset = 0
+                while remaining > 0:
+                    if stop_flag and stop_flag():
+                        break
+                    chunk = min(remaining, C_SCAN_CHUNK)
+                    s = (sweep_start + offset) & 0xFFFFFFFF
+                    winner = _c_scan_batch(hdr_tpl, target, s, chunk)
+                    hashes_done += chunk
+                    offset += chunk
+                    remaining -= chunk
+                    if on_hash:
+                        on_hash(hashes_done)
+                    if winner is not None:
+                        if on_log:
+                            on_log(f"Phase 3: solution nonce={winner} (total {hashes_done} hashes).")
+                        header = _build_block_header(version, prev_hex, merkle_root, current_time, bits_hex, winner)
+                        n_tx = 1 + len(tx_raws_for_block)
+                        full_block = header + _varint(n_tx) + coinbase_for_block + b"".join(tx_raws_for_block)
+                        result = submitblock(config, full_block.hex())
+                        if result is None:
+                            blocks_found = 1
+                        elif on_log:
+                            on_log(f"Submit block rejected: {result}")
+                        return hashes_done, blocks_found
+            else:
+                for i in range(phase3_count):
+                    if stop_flag and stop_flag():
+                        break
+                    nonce = (sweep_start + i) & 0xFFFFFFFF
+                    header = _build_block_header(
+                        version, prev_hex, merkle_root, current_time, bits_hex, nonce
+                    )
+                    h = _double_sha256(header)
+                    hashes_done += 1
+                    if on_hash:
+                        on_hash(hashes_done)
+                    if _hash_meets_target(h, target):
+                        if on_log:
+                            on_log(f"Phase 3: solution found (total {hashes_done} hashes).")
+                        n_tx = 1 + len(tx_raws_for_block)
+                        full_block = header + _varint(n_tx) + coinbase_for_block + b"".join(tx_raws_for_block)
+                        result = submitblock(config, full_block.hex())
+                        if result is None:
+                            blocks_found = 1
+                        elif on_log:
+                            on_log(f"Submit block rejected: {result}")
+                        return hashes_done, blocks_found
+
         # Timestamp rolling: increment time to get a fresh nonce space
         current_time += 1
         if current_time > maxtime:
-            # Extra-nonce rolling: change coinbase to get a new merkle root
             extra_nonce_counter += 1
             if extra_nonce_counter > EXTRA_NONCE_ROLL_MAX:
                 break
@@ -551,9 +635,17 @@ MP_FIRST_REPORT_HASHES = 500
 
 
 def _mp_get_context():
-    """Use spawn on macOS (Apple Silicon) for reliable multiprocessing; fork elsewhere."""
+    """Use forkserver on macOS to avoid broken-pipe errors.
+
+    When Flask runs as a child of Node.js (via start-miner-server.js), the Python
+    process inherits Node.js pipe FDs. The 'spawn' context sends Queue/Event FDs
+    through a new pipe to each child, but those inherited FDs cause [Errno 32]
+    Broken pipe immediately on p.start(). 'forkserver' pre-forks a clean helper
+    process before any threads or extra FDs exist, so the FD set passed to workers
+    is clean and the broken-pipe error does not occur.
+    """
     if sys.platform == "darwin":
-        return multiprocessing.get_context("spawn")
+        return multiprocessing.get_context("forkserver")
     return multiprocessing.get_context()
 
 
@@ -564,6 +656,7 @@ def _mp_worker_mine_range(args: tuple) -> None:
     Base/recovery nonce are passed from main so workers do not load C libs.
     Workers return winning nonce only; main builds and submits full block.
     Force Python-only candidate list in workers to avoid loading libalgorithms in spawn.
+    C hasher (libhasher_fast) IS loaded in workers for fast batch scanning.
     """
     os.environ["BTC_USE_C_NONCE"] = "0"
     os.environ["BTC_USE_C_CANDIDATES"] = "0"
@@ -591,6 +684,7 @@ def _mp_worker_mine_range(args: tuple) -> None:
     if use_quadrant:
         start_n = 0
         end_n = 0xFFFFFFFF + 1
+        cands = build_candidate_list(base_nonce, recovery_nonce, start_n, end_n, quadrant_id=worker_id)
     else:
         start_n = worker_id * chunk_size
         end_n = (
@@ -598,11 +692,10 @@ def _mp_worker_mine_range(args: tuple) -> None:
             if worker_id < num_workers - 1
             else 0xFFFFFFFF + 1
         )
-    cands = build_candidate_list(base_nonce, recovery_nonce, start_n, end_n)
-    if use_quadrant:
-        cands = [n for n in cands if quadrant_from_nonce(n) == worker_id]
+        cands = build_candidate_list(base_nonce, recovery_nonce, start_n, end_n)
     h_done = 0
     last_reported = 0
+    use_c = _c_hasher_available()
 
     def _report_progress(force: bool = False) -> None:
         nonlocal last_reported
@@ -618,21 +711,32 @@ def _mp_worker_mine_range(args: tuple) -> None:
             last_reported = h_done
 
     # Phase 2: thesis candidates (first timestamp only)
-    for n in cands:
-        if stop_event.is_set():
-            _report_progress(force=True)
-            result_queue.put((h_done, 0, None))
-            return
-        header = _build_block_header(
-            version, prev_hex, merkle_root, curtime, bits_hex, n
-        )
-        h = _double_sha256(header)
-        h_done += 1
+    hdr_tpl = _build_header_template(version, prev_hex, merkle_root, curtime, bits_hex)
+    if use_c and cands:
+        hit = _c_scan_list(hdr_tpl, target, cands)
+        h_done += len(cands)
         _report_progress()
-        if _hash_meets_target(h, target):
+        if hit is not None:
+            winning_nonce, _idx = hit
             _report_progress(force=True)
-            result_queue.put((h_done, 1, n))
+            result_queue.put((h_done, 1, winning_nonce, curtime))
             return
+    else:
+        for n in cands:
+            if stop_event.is_set():
+                _report_progress(force=True)
+                result_queue.put((h_done, 0, None, curtime))
+                return
+            header = _build_block_header(
+                version, prev_hex, merkle_root, curtime, bits_hex, n
+            )
+            h = _double_sha256(header)
+            h_done += 1
+            _report_progress()
+            if _hash_meets_target(h, target):
+                _report_progress(force=True)
+                result_queue.put((h_done, 1, n, curtime))
+                return
 
     # Phase 3: linear sweep with timestamp rolling
     p3_count = phase3_nonces_per_worker()
@@ -640,30 +744,54 @@ def _mp_worker_mine_range(args: tuple) -> None:
     while True:
         if stop_event.is_set():
             break
+
         if p3_count > 0:
             sweep_start = ((base_nonce + worker_id * p3_count) & 0xFFFFFFFF)
-            for i in range(p3_count):
-                if stop_event.is_set():
-                    _report_progress(force=True)
-                    result_queue.put((h_done, 0, None))
-                    return
-                nonce = (sweep_start + i) & 0xFFFFFFFF
-                header = _build_block_header(
-                    version, prev_hex, merkle_root, current_time, bits_hex, nonce
-                )
-                h = _double_sha256(header)
-                h_done += 1
-                _report_progress()
-                if _hash_meets_target(h, target):
-                    _report_progress(force=True)
-                    result_queue.put((h_done, 1, nonce))
-                    return
+            hdr_tpl = _build_header_template(version, prev_hex, merkle_root, current_time, bits_hex)
+
+            if use_c:
+                remaining = p3_count
+                offset = 0
+                while remaining > 0:
+                    if stop_event.is_set():
+                        _report_progress(force=True)
+                        result_queue.put((h_done, 0, None, current_time))
+                        return
+                    chunk = min(remaining, C_SCAN_CHUNK)
+                    s = (sweep_start + offset) & 0xFFFFFFFF
+                    winner = _c_scan_batch(hdr_tpl, target, s, chunk)
+                    h_done += chunk
+                    offset += chunk
+                    remaining -= chunk
+                    _report_progress()
+                    if winner is not None:
+                        _report_progress(force=True)
+                        result_queue.put((h_done, 1, winner, current_time))
+                        return
+            else:
+                for i in range(p3_count):
+                    if stop_event.is_set():
+                        _report_progress(force=True)
+                        result_queue.put((h_done, 0, None, current_time))
+                        return
+                    nonce = (sweep_start + i) & 0xFFFFFFFF
+                    header = _build_block_header(
+                        version, prev_hex, merkle_root, current_time, bits_hex, nonce
+                    )
+                    h = _double_sha256(header)
+                    h_done += 1
+                    _report_progress()
+                    if _hash_meets_target(h, target):
+                        _report_progress(force=True)
+                        result_queue.put((h_done, 1, nonce, current_time))
+                        return
+
         current_time += 1
         if current_time > maxtime:
             break
 
     _report_progress(force=True)
-    result_queue.put((h_done, 0, None))
+    result_queue.put((h_done, 0, None, curtime))
 
 
 def _run_mining_loop_unified_mp(
@@ -732,8 +860,13 @@ def _run_mining_loop_unified_mp(
     log_nonce_round(
         height, bits_hex, base_nonce, recovery_nonce,
         minimal_nonces, len(phase2_candidates), phase2_candidates,
+        base_nonce_source=get_base_nonce_source(),
+        seed_prime_path=get_last_seed_prime_path(),
     )
     if on_log:
+        on_log(
+            f"Thesis: base={get_base_nonce_source()} seed={get_last_seed_prime_path() or 'n/a'} candidates={len(phase2_candidates)}"
+        )
         use_quadrant = num_workers == 4
         per_worker = (
             [len([n for n in phase2_candidates if quadrant_from_nonce(n) == i]) for i in range(num_workers)]
@@ -783,16 +916,18 @@ def _run_mining_loop_unified_mp(
     total_hashes = 0
     blocks_found = 0
     winning_nonce: Optional[int] = None
+    winning_time: int = curtime
     finished = 0
     while finished < num_workers:
         try:
-            h_done, bf, bh = result_queue.get(timeout=0.25)
+            h_done, bf, bh, btime = result_queue.get(timeout=0.25)
             total_hashes += h_done
             if bf and bh is not None:
                 if on_log:
                     on_log(f"Block found by worker (total {phase1_hashes + h_done} hashes).")
                 blocks_found = 1
                 winning_nonce = bh
+                winning_time = btime
                 break
             finished += 1
         except multiprocessing.queues.Empty:
@@ -818,7 +953,7 @@ def _run_mining_loop_unified_mp(
 
     if blocks_found and winning_nonce is not None:
         header = _build_block_header(
-            version, prev_hex, merkle_root, curtime, bits_hex, winning_nonce
+            version, prev_hex, merkle_root, winning_time, bits_hex, winning_nonce
         )
         n_tx = 1 + len(tx_raws_for_block)
         full_block = header + _varint(n_tx) + coinbase_for_block + b"".join(tx_raws_for_block)

@@ -23,7 +23,7 @@ function Modal({ open, onClose, title, children }) {
   );
 }
 
-export default function AdminUsers() {
+export default function AdminUsers({ embedded = false }) {
   const { token } = useAuth();
   const [data, setData] = useState({ users: [], pagination: { page: 1, perPage: 10, total: 0 } });
   const [error, setError] = useState(null);
@@ -174,20 +174,48 @@ export default function AdminUsers() {
   const totalPages = Math.ceil(pagination.total / pagination.perPage) || 1;
 
   return (
-    <div className="max-w-4xl">
-      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">/admin/users</p>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-100">User Management</h1>
-        <button
-          type="button"
-          onClick={() => setShowAdd(true)}
-          className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium rounded-lg"
-        >
-          Add User
-        </button>
+    <div className={embedded ? 'space-y-6' : 'w-full max-w-4xl mx-auto space-y-6'}>
+      {!embedded && (
+        <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">/admin/users</p>
+      )}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        {!embedded && <h1 className="text-2xl font-bold text-gray-100">User Management</h1>}
+        {embedded && <div className="flex-1" aria-hidden />}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (!token) return;
+              fetch('/api/admin/export/users?format=csv', { headers: { Authorization: `Bearer ${token}` } })
+                .then((r) => {
+                  if (!r.ok) throw new Error('Export failed');
+                  return r.blob();
+                })
+                .then((blob) => {
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'users.csv';
+                  a.click();
+                  URL.revokeObjectURL(url);
+                })
+                .catch((e) => setError(e.message));
+            }}
+            className="px-4 py-2 border border-white/20 hover:bg-white/5 text-gray-200 text-sm font-medium rounded-lg"
+          >
+            Export CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowAdd(true)}
+            className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium rounded-lg"
+          >
+            Add User
+          </button>
+        </div>
       </div>
 
-      {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+      {error && <p className="text-red-400 text-sm">{error}</p>}
 
       <div className="rounded-lg border border-white/10 overflow-hidden bg-[#1c1c1c]">
         <table className="w-full text-sm">
