@@ -6,8 +6,7 @@ import { usePublicSettings } from '../contexts/PublicSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useStorage } from '../utils/storage';
 import { setMonitorStorageAdapter } from '../services/monitorService';
-
-const ANNOUNCEMENT_DISMISSED_KEY = 'announcement_dismissed';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -26,20 +25,15 @@ function MainLayout() {
   }, [getItem, setItem]);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(ANNOUNCEMENT_DISMISSED_KEY);
+    getItem(STORAGE_KEYS.ANNOUNCEMENT_DISMISSED).then((stored) => {
       setAnnouncementDismissed(stored ?? '');
-    } catch {
-      setAnnouncementDismissed('');
-    }
-  }, [announcement?.text]);
+    }).catch(() => setAnnouncementDismissed(''));
+  }, [getItem, announcement?.text]);
 
   const dismissAnnouncement = () => {
     if (announcement?.text) {
-      try {
-        localStorage.setItem(ANNOUNCEMENT_DISMISSED_KEY, announcement.text);
-        setAnnouncementDismissed(announcement.text);
-      } catch {}
+      setItem(STORAGE_KEYS.ANNOUNCEMENT_DISMISSED, announcement.text).catch(() => {});
+      setAnnouncementDismissed(announcement.text);
     }
   };
 
@@ -141,7 +135,7 @@ function MainLayout() {
           </div>
         </div>
         <div
-          className={`flex-1 overflow-y-auto min-h-0 flex flex-col ${compactMode ? 'p-3 sm:p-4 lg:p-5' : 'p-4 sm:p-6 lg:p-8'}`}
+          className={`flex-1 overflow-y-auto min-h-0 flex flex-col scroll-touch pb-[env(safe-area-inset-bottom)] ${compactMode ? 'p-3 sm:p-4 lg:p-5' : 'p-4 sm:p-6 lg:p-8'}`}
         >
           <div className="w-full max-w-[1800px] mx-auto flex flex-col flex-1 min-h-0 min-w-0">
             <Outlet />

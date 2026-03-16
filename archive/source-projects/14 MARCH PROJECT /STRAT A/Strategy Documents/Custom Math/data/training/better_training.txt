@@ -1,0 +1,44 @@
+The sky is blue because of Rayleigh scattering.
+Light from the sun contains all colors of the rainbow.
+Blue light has a shorter wavelength than red light.
+When sunlight enters Earth's atmosphere, it collides with air molecules.
+These collisions scatter blue light in all directions.
+This is why we see a blue sky during the day.
+At sunset, light travels through more atmosphere.
+More blue light gets scattered away, leaving red and orange.
+This creates beautiful sunset colors.
+The ocean appears blue for similar reasons.
+Water absorbs red light more than blue light.
+Deep water looks darker blue because less light reaches it.
+Prime numbers are fundamental in mathematics.
+A prime number is only divisible by one and itself.
+The first few primes are 2, 3, 5, 7, 11, and 13.
+There are infinitely many prime numbers.
+This was proven by Euclid over 2000 years ago.
+Prime numbers are used in cryptography.
+RSA encryption relies on the difficulty of factoring large primes.
+The Riemann Hypothesis concerns the distribution of primes.
+Crystalline structures are found throughout nature.
+Snowflakes form beautiful crystalline patterns.
+Salt crystals are cubic in shape.
+Diamonds have a crystalline carbon structure.
+Crystals grow by adding atoms in regular patterns.
+The lattice structure determines crystal properties.
+X-ray diffraction reveals crystalline structures.
+Quartz crystals are used in watches and electronics.
+Language models learn patterns from text data.
+Neural networks consist of interconnected layers.
+Training adjusts weights to minimize loss.
+Backpropagation computes gradients efficiently.
+Attention mechanisms help models focus on relevant information.
+Transformers revolutionized natural language processing.
+Large language models can generate coherent text.
+Fine-tuning adapts models to specific tasks.
+The quick brown fox jumps over the lazy dog.
+This sentence contains every letter of the alphabet.
+Pangrams are useful for testing fonts and keyboards.
+Mathematics is the language of the universe.
+Patterns and structures appear everywhere in nature.
+Understanding these patterns helps us solve problems.
+Science and mathematics work together to explain reality.
+</file_path>

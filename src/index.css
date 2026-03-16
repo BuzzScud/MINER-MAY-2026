@@ -26,10 +26,12 @@ html::-webkit-scrollbar {
 
 body {
   margin: 0;
-  padding: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   min-width: 320px;
   height: 100%;
   overflow: hidden; /* Prevent body scroll - layout handles scrolling */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
   overflow: -moz-scrollbars-none; /* Firefox - hide scrollbar */
   -ms-overflow-style: none; /* IE and Edge - hide scrollbar */
   scrollbar-width: none; /* Firefox - hide scrollbar */
@@ -54,6 +56,12 @@ body::-webkit-scrollbar {
 
 *::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
+}
+
+/* iOS scroll container: smooth scrolling and contain overscroll */
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 /* Appearance settings (data attributes on html) */

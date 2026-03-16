@@ -16,7 +16,6 @@ import EconomicCalendar from './pages/EconomicCalendar';
 import BudgetTracker from './pages/BudgetTracker';
 import Miner from './pages/Miner';
 import { ApiMonitorView } from './features/api-monitor/ApiMonitorView';
-import { TradingBotView } from './features/trading-bot/TradingBotView';
 import { SentimentView } from './features/sentiment/SentimentView';
 import AdminRoute from './components/common/AdminRoute';
 import AdminLayout from './layouts/AdminLayout';
@@ -53,7 +52,7 @@ function App() {
     }
     
     // Auto-detect subdirectory: if path has multiple segments and first isn't a known route
-    const knownRoutes = ['trading', 'notes', 'projection', 'settings', 'calendar', 'dashboard', 'fib-stuff', 'budget-tracker', 'miner', 'api-monitor', 'trading-bot', 'sentiment', 'login', 'register', 'admin'];
+    const knownRoutes = ['trading', 'notes', 'projection', 'settings', 'calendar', 'dashboard', 'fib-stuff', 'budget-tracker', 'miner', 'api-monitor', 'trading-bot', 'sentiment', 'cme', 'login', 'register', 'admin'];
     
     // If first part is not a known route, it's likely a subdirectory
     if (pathParts.length > 0 && !knownRoutes.includes(pathParts[0]) && pathParts[0] !== 'index.html') {
@@ -84,6 +83,7 @@ function App() {
             </Route>
             <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
               <Route index element={<Dashboard />} />
+              <Route path="dashboard" element={<Dashboard />} />
               <Route path="trading" element={<Trading />} />
               <Route path="notes" element={<Notes />} />
               <Route path="projection" element={<Navigate to="/trading?tab=projection" replace />} />
@@ -92,8 +92,9 @@ function App() {
               <Route path="budget-tracker" element={<BudgetTracker />} />
               <Route path="miner" element={<Miner />} />
               <Route path="api-monitor" element={<ApiMonitorView />} />
-              <Route path="trading-bot" element={<ErrorBoundary><TradingBotView /></ErrorBoundary>} />
+              <Route path="trading-bot" element={<Navigate to="/trading?tab=bot" replace />} />
               <Route path="sentiment" element={<ErrorBoundary><SentimentView /></ErrorBoundary>} />
+              <Route path="cme" element={<Navigate to="/sentiment?tab=cme" replace />} />
               <Route path="settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>

@@ -3,7 +3,7 @@ import pg from 'pg';
 import { pool, initSchema } from './db.js';
 
 async function ensureDatabase() {
-  const url = process.env.DATABASE_URL || 'postgresql://localhost:5433/algonov26';
+  const url = process.env.DATABASE_URL || 'postgresql://localhost:5432/algonov26';
   const baseUrl = url.replace(/\/[^/]*$/, '/postgres');
   const client = new pg.Client({ connectionString: baseUrl });
   try {

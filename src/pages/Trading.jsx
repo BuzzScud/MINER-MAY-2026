@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Projection from './Projection';
 import FibStuff from './FibStuff';
+import { TradingBotView } from '../features/trading-bot/TradingBotView';
 import { useStorage } from '../utils/storage';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 import {
@@ -113,11 +114,12 @@ function CandlestickChartWrapper({ chartType, candlestickData, chartData, symbol
 const CHARTS_TAB = 'charts';
 const PROJECTION_TAB = 'projection';
 const FIB_STUFF_TAB = 'fib';
+const TRADING_BOT_TAB = 'bot';
 
 function Trading() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const tab = tabParam === PROJECTION_TAB ? PROJECTION_TAB : tabParam === FIB_STUFF_TAB ? FIB_STUFF_TAB : CHARTS_TAB;
+  const tab = tabParam === PROJECTION_TAB ? PROJECTION_TAB : tabParam === FIB_STUFF_TAB ? FIB_STUFF_TAB : tabParam === TRADING_BOT_TAB ? TRADING_BOT_TAB : CHARTS_TAB;
   const setTab = (t) => setSearchParams(t === CHARTS_TAB ? {} : { tab: t });
   const { getItem, setItem } = useStorage();
   const [symbol, setSymbol] = useState('QQQ');
@@ -690,7 +692,7 @@ function Trading() {
       <div
         role="tablist"
         aria-label="Charts and projection tabs"
-        className="flex gap-0 border-b border-gray-200 dark:border-gray-700 mb-4 flex-shrink-0"
+        className="flex gap-0 border-b border-gray-200 dark:border-gray-700 mb-4 flex-shrink-0 overflow-x-auto"
       >
         <button
           type="button"
@@ -699,7 +701,7 @@ function Trading() {
           aria-controls="tabpanel-charts"
           id="tab-charts"
           onClick={() => setTab(CHARTS_TAB)}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+          className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
             tab === CHARTS_TAB
               ? 'border-indigo-600 text-gray-900 dark:text-white'
               : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
@@ -714,7 +716,7 @@ function Trading() {
           aria-controls="tabpanel-projection"
           id="tab-projection"
           onClick={() => setTab(PROJECTION_TAB)}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+          className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
             tab === PROJECTION_TAB
               ? 'border-indigo-600 text-gray-900 dark:text-white'
               : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
@@ -729,13 +731,28 @@ function Trading() {
           aria-controls="tabpanel-fib"
           id="tab-fib"
           onClick={() => setTab(FIB_STUFF_TAB)}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+          className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
             tab === FIB_STUFF_TAB
               ? 'border-indigo-600 text-gray-900 dark:text-white'
               : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
           }`}
         >
           Fib Stuff
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === TRADING_BOT_TAB}
+          aria-controls="tabpanel-trading-bot"
+          id="tab-trading-bot"
+          onClick={() => setTab(TRADING_BOT_TAB)}
+          className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            tab === TRADING_BOT_TAB
+              ? 'border-indigo-600 text-gray-900 dark:text-white'
+              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          Trading Bot
         </button>
       </div>
       {tab === PROJECTION_TAB ? (
@@ -755,6 +772,15 @@ function Trading() {
           className="flex-1 min-h-0 overflow-hidden"
         >
           <FibStuff embedded />
+        </div>
+      ) : tab === TRADING_BOT_TAB ? (
+        <div
+          id="tabpanel-trading-bot"
+          role="tabpanel"
+          aria-labelledby="tab-trading-bot"
+          className="flex-1 min-h-0 overflow-hidden"
+        >
+          <TradingBotView embedded />
         </div>
       ) : (
         <div
@@ -776,7 +802,7 @@ function Trading() {
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-4 flex-shrink-0">
         <div className="flex flex-wrap items-end gap-3">
           {/* Symbol Input */}
-          <div className="flex-1 min-w-[160px] relative">
+          <div className="flex-1 min-w-0 sm:min-w-[160px] relative">
             <label htmlFor="symbol" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
               Symbol
             </label>
@@ -853,7 +879,7 @@ function Trading() {
               <button
                 type="button"
                 onClick={() => handleIntervalChange('1D')}
-                className={interval === '1D' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}
+                className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2 ${interval === '1D' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
               >
                 1D
               </button>
@@ -861,7 +887,7 @@ function Trading() {
               <button
                 type="button"
                 onClick={() => handleIntervalChange('1H')}
-                className={interval === '1H' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}
+                className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2 ${interval === '1H' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
               >
                 1H
               </button>
@@ -873,7 +899,7 @@ function Trading() {
             type="button"
             onClick={handleSearch}
             disabled={loading || !symbol || !symbol.trim()}
-            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm hover:shadow transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-1.5"
+            className="min-h-[44px] px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm hover:shadow transition-all disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
           >
             {loading ? (
               <>
@@ -970,7 +996,7 @@ function Trading() {
                     setSymbol(s);
                     setTimeout(() => handleSearch(), 100);
                   }}
-                  className="px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-sky-400 transition-colors"
+                  className="min-h-[44px] px-3 py-2.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-sky-400 transition-colors"
                 >
                   {s}
                 </button>
@@ -1005,7 +1031,7 @@ function Trading() {
                         console.error('Error switching to line chart:', error);
                       }
                     }}
-                    className={chartType === 'line' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}
+                    className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2 ${chartType === 'line' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
                   >
                     Line
                   </button>
@@ -1014,7 +1040,7 @@ function Trading() {
                     type="button"
                     onClick={() => setChartType('candlestick')}
                     disabled={!candlestickData?.datasets?.[0]?.data?.length}
-                    className={`${chartType === 'candlestick' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                    className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2 ${chartType === 'candlestick' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'} disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     Candlestick
                   </button>

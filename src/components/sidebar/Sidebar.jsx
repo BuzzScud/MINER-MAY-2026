@@ -15,7 +15,6 @@ const ALL_PAGES = [
   { path: '/notes', label: 'Notes' },
   { path: '/calendar', label: 'Economic Calendar' },
   { path: '/trading', label: 'Charts' },
-  { path: '/trading-bot', label: 'Trading Bot' },
   { path: '/sentiment', label: 'Sentiment' },
   { path: '/budget-tracker', label: 'Budget Tracker' },
   { path: '/miner', label: 'Miner' },
@@ -44,11 +43,6 @@ const PAGE_ICONS = {
   '/trading': (
     <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-    </svg>
-  ),
-  '/trading-bot': (
-    <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
     </svg>
   ),
   '/sentiment': (
@@ -82,7 +76,7 @@ const PAGE_ICONS = {
 function getDefaultSections() {
   return [
     { id: 'dashboard', label: 'Dashboard', pagePaths: ['/', '/notes', '/calendar'] },
-    { id: 'markets', label: 'Markets', pagePaths: ['/trading-bot', '/sentiment', '/trading'] },
+    { id: 'markets', label: 'Markets', pagePaths: ['/sentiment', '/trading'] },
     { id: 'crypto', label: 'Crypto', pagePaths: ['/miner'] },
     { id: 'utilities', label: 'Utilities', pagePaths: ['/budget-tracker'] },
     { id: 'settings', label: 'Settings', pagePaths: ['/api-monitor', '/settings'] },
@@ -140,7 +134,7 @@ function ensureSettingsLast(sections) {
 function NavItem({ path, label, location, onClose, icon }) {
   const isActive =
     path === '/'
-      ? location.pathname === '/'
+      ? location.pathname === '/' || location.pathname === '/dashboard'
       : location.pathname === path || location.pathname.startsWith(path + '/');
   return (
     <li>
@@ -168,7 +162,7 @@ function SortableNavItem({ path, label, location, onClose, icon }) {
   });
   const isActive =
     path === '/'
-      ? location.pathname === '/'
+      ? location.pathname === '/' || location.pathname === '/dashboard'
       : location.pathname === path || location.pathname.startsWith(path + '/');
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -435,7 +429,7 @@ function Sidebar({ isOpen, onClose }) {
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex flex-col h-full overflow-hidden pb-[env(safe-area-inset-bottom)]">
           {/* Header */}
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-900">
             <div className="flex items-center justify-between gap-2">
@@ -454,7 +448,7 @@ function Sidebar({ isOpen, onClose }) {
                   <button
                     type="button"
                     onClick={handleDoneEditing}
-                    className="p-2 text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+                    className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
                     aria-label="Done editing menu"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -465,7 +459,7 @@ function Sidebar({ isOpen, onClose }) {
                   <button
                     type="button"
                     onClick={() => setIsEditMode(true)}
-                    className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+                    className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
                     aria-label="Customize menu"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -476,7 +470,7 @@ function Sidebar({ isOpen, onClose }) {
                 <button
                   type="button"
                   onClick={toggleDarkMode}
-                  className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+                  className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
                   role="switch"
                   aria-checked={darkMode}
                   aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -493,7 +487,7 @@ function Sidebar({ isOpen, onClose }) {
                 </button>
               <button
                 type="button"
-                className="lg:hidden p-2 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-md"
+                className="lg:hidden min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-md"
                 onClick={onClose}
                 aria-label="Close sidebar"
               >

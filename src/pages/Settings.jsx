@@ -41,7 +41,7 @@ function Toggle({ enabled, onChange, label }) {
     <button
       type="button"
       onClick={() => onChange(!enabled)}
-      className={`relative inline-flex h-6 w-10 items-center rounded-full shrink-0 transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${
+      className={`relative inline-flex h-11 w-12 min-h-[44px] min-w-[44px] items-center rounded-full shrink-0 transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${
         enabled ? 'bg-sky-600' : 'bg-gray-300 dark:bg-gray-600'
       }`}
       role="switch"
@@ -49,8 +49,8 @@ function Toggle({ enabled, onChange, label }) {
       aria-label={label}
     >
       <span
-        className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
-          enabled ? 'translate-x-5' : 'translate-x-1'
+        className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
+          enabled ? 'translate-x-6' : 'translate-x-1'
         }`}
       />
     </button>
@@ -467,7 +467,7 @@ function DataTab({ showSaveStatus }) {
                   <button
                     type="button"
                     onClick={() => handleRemoveSymbol(symbol)}
-                    className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-400 hover:text-red-500 transition-colors"
+                    className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-400 hover:text-red-500 transition-colors"
                     aria-label={`Remove ${symbol}`}
                   >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>

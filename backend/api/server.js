@@ -8,6 +8,7 @@ import dataRoutes from './routes/data.js';
 import adminRoutes from './routes/admin.js';
 import settingsRoutes from './routes/settings.js';
 import sentimentBackendRoutes from './routes/sentimentBackend.js';
+import predictRoutes from './routes/predict.js';
 
 // Security: refuse to start in production without a strong JWT_SECRET
 const isProduction = process.env.NODE_ENV === 'production';
@@ -39,6 +40,7 @@ app.use('/api/data', dataRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/sentiment-backend', sentimentBackendRoutes);
+app.use('/api/predict', predictRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true });

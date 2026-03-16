@@ -33,6 +33,8 @@ export default defineConfig(({ command }) => ({
     strictPort: true,
     open: false,
     proxy: {
+      '/api/sentiment-backend': { target: 'http://localhost:4000', changeOrigin: true },
+      '/api/predict': { target: 'http://localhost:4000', changeOrigin: true },
       '/api/sentiment': { target: 'http://localhost:8000', changeOrigin: true },
       '/api/composite': { target: 'http://localhost:8000', changeOrigin: true },
       '/api/yahoo': {
@@ -76,7 +78,6 @@ export default defineConfig(({ command }) => ({
       '/api/data': { target: 'http://localhost:4000', changeOrigin: true },
       '/api/admin': { target: 'http://localhost:4000', changeOrigin: true },
       '/api/settings': { target: 'http://localhost:4000', changeOrigin: true },
-      '/api/sentiment-backend': { target: 'http://localhost:4000', changeOrigin: true },
       '/api/miner': {
         target: 'http://127.0.0.1:5001',
         changeOrigin: false,

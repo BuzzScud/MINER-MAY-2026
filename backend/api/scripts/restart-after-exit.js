@@ -11,7 +11,7 @@ const apiDir = path.join(__dirname, '..');
 const RESTART_DELAY_MS = 3000;
 
 setTimeout(() => {
-  const child = spawn(process.execPath, ['server.js'], {
+  const child = spawn(process.execPath, ['--watch', 'server.js'], {
     detached: true,
     stdio: 'inherit',
     cwd: apiDir,

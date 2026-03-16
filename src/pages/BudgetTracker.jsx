@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useStorage, saveBatch } from '../utils/storage';
+import { useAuth } from '../contexts/AuthContext';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 import {
   PieChart,
@@ -58,12 +59,16 @@ function fromYMD(str) {
 }
 
 function BudgetTracker() {
-  const { getItem, setItem, token } = useStorage();
+  const { getItem, token } = useStorage();
+  const { migrationPending } = useAuth();
   const [tab, setTab] = useState('dashboard');
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [budgets, setBudgets] = useState([]);
   const [reminders, setReminders] = useState([]);
   const [clock, setClock] = useState(new Date());
+  const [dataReady, setDataReady] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const loadGeneration = useRef(0);
 
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [showBillModal, setShowBillModal] = useState(false);
@@ -93,20 +98,41 @@ function BudgetTracker() {
   const [billsStatusFilter, setBillsStatusFilter] = useState('all');
   const [billsCategoryFilter, setBillsCategoryFilter] = useState('all');
 
-  // Load from API (algonov26) when logged in, or localStorage when not. Re-run when token becomes available (e.g. after refresh).
   useEffect(() => {
+    if (migrationPending) return;
+    setDataReady(false);
+    setIsDirty(false);
+    const thisLoad = ++loadGeneration.current;
     Promise.all([
       getItem(STORAGE_KEY_CATEGORIES),
       getItem(STORAGE_KEY_BUDGETS),
       getItem(STORAGE_KEY_REMINDERS),
-    ]).then(([cat, bud, rem]) => {
-      setCategories(Array.isArray(cat) ? cat : DEFAULT_CATEGORIES);
-      setBudgets(Array.isArray(bud) ? bud : []);
-      setReminders(Array.isArray(rem) ? rem : []);
-    });
-  }, [getItem, token]);
+    ])
+      .then(([cat, bud, rem]) => {
+        if (thisLoad !== loadGeneration.current) return;
+        setCategories(Array.isArray(cat) && cat.length > 0 ? cat : DEFAULT_CATEGORIES);
+        setBudgets(Array.isArray(bud) ? bud : []);
+        setReminders(Array.isArray(rem) ? rem : []);
+        setTimeout(() => setDataReady(true), 0);
+      })
+      .catch(() => {
+        // Keep dataReady=false so we never auto-save on a failed initial load
+      });
+  }, [getItem, token, migrationPending]);
 
-  // Flush current state to storage on page unload so refresh doesn't lose the last change
+  useEffect(() => {
+    if (!dataReady) return;
+    if (migrationPending) return;
+    if (!isDirty) return;
+    saveBatch(token, {
+      [STORAGE_KEY_CATEGORIES]: categories,
+      [STORAGE_KEY_BUDGETS]: budgets,
+      [STORAGE_KEY_REMINDERS]: reminders,
+    })
+      .then(() => setIsDirty(false))
+      .catch(() => {});
+  }, [dataReady, migrationPending, isDirty, categories, budgets, reminders, token]);
+
   useEffect(() => {
     const flush = () => {
       if (token) {
@@ -126,16 +152,6 @@ function BudgetTracker() {
     window.addEventListener('beforeunload', flush);
     return () => window.removeEventListener('beforeunload', flush);
   }, [token, categories, budgets, reminders]);
-
-  useEffect(() => {
-    setItem(STORAGE_KEY_CATEGORIES, categories).catch(() => {});
-  }, [categories, setItem]);
-  useEffect(() => {
-    setItem(STORAGE_KEY_BUDGETS, budgets).catch(() => {});
-  }, [budgets, setItem]);
-  useEffect(() => {
-    setItem(STORAGE_KEY_REMINDERS, reminders).catch(() => {});
-  }, [reminders, setItem]);
 
   useEffect(() => {
     const t = setInterval(() => setClock(new Date()), 1000);
@@ -219,6 +235,7 @@ function BudgetTracker() {
         date: txDate,
       },
     ]);
+    setIsDirty(true);
     setTxAmount('');
     setTxDescription('');
     setTxDate(toYMD(new Date()));
@@ -264,6 +281,7 @@ function BudgetTracker() {
         },
       ]);
     }
+    setIsDirty(true);
     setBillTitle('');
     setBillAmount('');
     setBillDueDate(toYMD(new Date()));
@@ -287,20 +305,57 @@ function BudgetTracker() {
     if (!catName.trim()) return;
     const id = nextId(categories);
     setCategories((prev) => [...prev, { id, name: catName.trim(), color: catColor }]);
+    setIsDirty(true);
     setCatName('');
     setCatColor('#3b82f6');
     setShowCategoryModal(false);
   }, [catName, catColor, categories]);
 
   const markBillPaid = useCallback((id, paid) => {
-    setReminders((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, is_paid: paid } : r))
-    );
+    setReminders((prev) => {
+      const updated = prev.map((r) => (r.id === id ? { ...r, is_paid: paid } : r));
+      const target = updated.find((r) => r.id === id);
+      if (!target || !paid || !target.recurring) {
+        return updated;
+      }
+      const baseDate = fromYMD(target.due_date);
+      const next = new Date(baseDate);
+      switch (target.recurrence_type) {
+        case 'daily':
+          next.setDate(next.getDate() + 1);
+          break;
+        case 'weekly':
+          next.setDate(next.getDate() + 7);
+          break;
+        case 'yearly':
+          next.setFullYear(next.getFullYear() + 1);
+          break;
+        case 'monthly':
+        default:
+          next.setMonth(next.getMonth() + 1);
+          break;
+      }
+      const nextIdValue = nextId(updated);
+      const rolled = {
+        id: nextIdValue,
+        title: target.title,
+        amount: target.amount,
+        due_date: toYMD(next),
+        category: target.category,
+        website_url: target.website_url || '',
+        recurring: true,
+        recurrence_type: target.recurrence_type || 'monthly',
+        is_paid: false,
+      };
+      return [...updated, rolled];
+    });
+    setIsDirty(true);
   }, []);
 
   const deleteBill = useCallback((id) => {
     if (window.confirm('Delete this bill?')) {
       setReminders((prev) => prev.filter((r) => r.id !== id));
+      setIsDirty(true);
       setShowBillDetails(null);
     }
   }, []);
@@ -322,6 +377,7 @@ function BudgetTracker() {
       setBudgets([]);
       setReminders([]);
       setCategories(DEFAULT_CATEGORIES);
+      setIsDirty(true);
       setShowBillDetails(null);
     }
   }, []);
@@ -584,7 +640,7 @@ function BudgetTracker() {
                             <button
                               type="button"
                               onClick={() => markBillPaid(r.id, true)}
-                              className="text-[10px] text-green-600 hover:text-green-700"
+                              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-3 py-2 text-xs text-green-600 hover:text-green-700"
                             >
                               Pay
                             </button>
@@ -592,7 +648,7 @@ function BudgetTracker() {
                           <button
                             type="button"
                             onClick={() => openEditBill(r)}
-                            className="text-[10px] text-sky-400 hover:text-sky-300"
+                            className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-3 py-2 text-xs text-sky-400 hover:text-sky-300"
                           >
                             Edit
                           </button>
@@ -632,7 +688,7 @@ function BudgetTracker() {
               placeholder="Search..."
               value={billsSearch}
               onChange={(e) => setBillsSearch(e.target.value)}
-              className="px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white w-40"
+              className="px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white w-full sm:w-40"
             />
             <select
               value={billsStatusFilter}
@@ -661,14 +717,14 @@ function BudgetTracker() {
               <button
                 type="button"
                 onClick={() => setBillsView('grid')}
-                className={`p-1.5 rounded text-xs ${billsView === 'grid' ? 'bg-blue-100 text-blue-700' : 'text-gray-500'}`}
+                className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2.5 rounded text-xs ${billsView === 'grid' ? 'bg-blue-100 text-blue-700' : 'text-gray-500'}`}
               >
                 Grid
               </button>
               <button
                 type="button"
                 onClick={() => setBillsView('list')}
-                className={`p-1.5 rounded text-xs ${billsView === 'list' ? 'bg-blue-100 text-blue-700' : 'text-gray-500'}`}
+                className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2.5 rounded text-xs ${billsView === 'list' ? 'bg-blue-100 text-blue-700' : 'text-gray-500'}`}
               >
                 List
               </button>
@@ -745,7 +801,7 @@ function BudgetTracker() {
                         <button
                           type="button"
                           onClick={() => deleteBill(r.id)}
-                          className="text-[10px] text-red-600 hover:text-red-700"
+                          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-3 py-2 text-xs text-red-600 hover:text-red-700"
                         >
                           Delete
                         </button>

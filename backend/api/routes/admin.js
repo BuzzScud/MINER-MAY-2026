@@ -2,6 +2,7 @@ import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import path from 'path';
+import fs from 'fs';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { pool } from '../db.js';
@@ -402,6 +403,7 @@ router.get('/dependencies', async (req, res) => {
       { url: 'http://127.0.0.1:8080/', name: 'Trading Bot (8080)' },
       { url: 'http://127.0.0.1:5001/', name: 'Miner (5001)' },
       { url: 'http://127.0.0.1:4000/api/health', name: 'API (4000)' },
+      { url: 'http://127.0.0.1:8000/', name: 'Sentiment API (8000)' },
     ];
     const results = await Promise.all(services.map((s) => checkService(s.url, s.name)));
     const payload = results;
@@ -516,6 +518,17 @@ router.post('/restart-server', async (req, res) => {
        ON CONFLICT (id) DO UPDATE SET generation = emergency_logout.generation + 1`
     );
     res.json({ ok: true });
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (!isProduction) {
+      const serverPath = path.join(__dirname, '../server.js');
+      const now = Date.now() / 1000;
+      try {
+        fs.utimesSync(serverPath, now, now);
+      } catch (touchErr) {
+        console.error('Restart touch error:', touchErr.message);
+      }
+      return;
+    }
     const apiDir = path.join(__dirname, '..');
     const scriptPath = path.join(__dirname, '../scripts/restart-after-exit.js');
     const child = spawn(process.execPath, [scriptPath], {

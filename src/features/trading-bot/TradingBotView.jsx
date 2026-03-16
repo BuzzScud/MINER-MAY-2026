@@ -27,7 +27,7 @@ const INNER_TABS = [
   { id: 'trades', label: 'Trades' },
 ];
 
-export function TradingBotView() {
+export function TradingBotView({ embedded = false }) {
   const state = useTradingBotState();
   const [page, setPage] = useState(TAB_DASHBOARD);
   const [innerTab, setInnerTab] = useState(INNER_TABS[0].id);
@@ -47,19 +47,27 @@ export function TradingBotView() {
     await api.runBacktest(params);
   };
 
+  const containerCls = embedded
+    ? 'w-full max-w-[1800px] mx-auto px-0 flex flex-col h-full min-h-0 overflow-hidden'
+    : 'w-full max-w-[1800px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden';
+
   return (
-    <div className="w-full max-w-[1800px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden">
-      <nav className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2 flex-shrink-0">
-        <Link to="/" className="hover:text-sky-400 dark:hover:text-sky-300 transition-colors">Dashboard</Link>
-        <span>/</span>
-        <span className="font-medium text-gray-900 dark:text-white">Trading Bot</span>
-      </nav>
-      <div className="text-center mb-3 flex-shrink-0">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Trading Bot</h1>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Algorithmic trading dashboard — paper and live modes
-        </p>
-      </div>
+    <div className={containerCls}>
+      {!embedded && (
+        <nav className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2 flex-shrink-0">
+          <Link to="/" className="hover:text-sky-400 dark:hover:text-sky-300 transition-colors">Dashboard</Link>
+          <span>/</span>
+          <span className="font-medium text-gray-900 dark:text-white">Trading Bot</span>
+        </nav>
+      )}
+      {!embedded && (
+        <div className="text-center mb-3 flex-shrink-0">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Trading Bot</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Algorithmic trading dashboard — paper and live modes
+          </p>
+        </div>
+      )}
 
       <div className="flex gap-2 mb-2 flex-shrink-0">
         <button

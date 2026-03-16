@@ -9,6 +9,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setTokenState] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [migrationPending, setMigrationPending] = useState(false);
 
   const setToken = useCallback((newToken) => {
     if (newToken) {
@@ -35,9 +36,14 @@ export function AuthProvider({ children }) {
       throw new Error(res.ok ? 'Invalid response from server' : 'Login failed. Check that the API server is running.');
     }
     if (!res.ok) throw new Error(data.error || 'Login failed');
+    setMigrationPending(true);
     setToken(data.token);
     setUser(data.user);
-    migrateLocalToApi(data.token).catch(() => {});
+    try {
+      await migrateLocalToApi(data.token);
+    } finally {
+      setMigrationPending(false);
+    }
     return data;
   }, [setToken]);
 
@@ -55,13 +61,19 @@ export function AuthProvider({ children }) {
       throw new Error(res.ok ? 'Invalid response from server' : 'Registration failed. Check that the API server is running.');
     }
     if (!res.ok) throw new Error(data.error || 'Registration failed');
+    setMigrationPending(true);
     setToken(data.token);
     setUser(data.user);
-    migrateLocalToApi(data.token).catch(() => {});
+    try {
+      await migrateLocalToApi(data.token);
+    } finally {
+      setMigrationPending(false);
+    }
     return data;
   }, [setToken]);
 
   const logout = useCallback(() => {
+    setMigrationPending(false);
     setToken(null);
   }, [setToken]);
 
@@ -118,6 +130,7 @@ export function AuthProvider({ children }) {
     user,
     token,
     loading,
+    migrationPending,
     login,
     register,
     logout,

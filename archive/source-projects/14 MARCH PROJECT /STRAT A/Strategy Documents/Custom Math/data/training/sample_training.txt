@@ -1,0 +1,5 @@
+The quick brown fox jumps over the lazy dog.
+This is sample training data for the CLLM model.
+Prime numbers are the building blocks of mathematics.
+The crystalline lattice structure enables efficient computation.
+

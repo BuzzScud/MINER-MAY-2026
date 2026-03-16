@@ -56,6 +56,8 @@ const defaultOptions = {
   usePrimeModular: false,
 };
 
+const sentimentDataCache = {};
+
 export default function SentimentIndicator({
   asset = 'AAPL',
   provider = 'yfinance',
@@ -128,6 +130,9 @@ export default function SentimentIndicator({
     return msg;
   }
 
+  const optionsKey = `${options.useTimeDecay}-${options.aggregationMode}-${options.includeUncertainty}-${options.usePrimeModular}`;
+  const cacheKey = `${safeAsset}-${safeProvider}-${optionsKey}`;
+
   const fetchCurrent = async () => {
     try {
       const res = await fetch(currentUrl);
@@ -136,6 +141,7 @@ export default function SentimentIndicator({
           setCurrent(null);
           setError(null);
           setRateLimitUntil(null);
+          if (sentimentDataCache[cacheKey]) sentimentDataCache[cacheKey].current = null;
           return;
         }
         if (res.status === 429) {
@@ -145,6 +151,8 @@ export default function SentimentIndicator({
         throw new Error(msg);
       }
       const data = await res.json();
+      if (!sentimentDataCache[cacheKey]) sentimentDataCache[cacheKey] = {};
+      sentimentDataCache[cacheKey].current = data;
       setCurrent(data);
       setError(null);
       setRateLimitUntil(null);
@@ -161,19 +169,21 @@ export default function SentimentIndicator({
       if (!res.ok) {
         if (res.status === 404) {
           setHistorical([]);
+          if (sentimentDataCache[cacheKey]) sentimentDataCache[cacheKey].historical = [];
           return;
         }
         const msg = await getErrorFromResponse(res);
         throw new Error(msg);
       }
       const data = await res.json();
-      setHistorical(
-        (data || []).map((d) => ({
-          ...d,
-          time: d.window_end,
-          score: d.aggregated_score,
-        }))
-      );
+      const mapped = (data || []).map((d) => ({
+        ...d,
+        time: d.window_end,
+        score: d.aggregated_score,
+      }));
+      if (!sentimentDataCache[cacheKey]) sentimentDataCache[cacheKey] = {};
+      sentimentDataCache[cacheKey].historical = mapped;
+      setHistorical(mapped);
       setError(null);
     } catch (e) {
       setError(
@@ -190,8 +200,15 @@ export default function SentimentIndicator({
     );
   };
 
-  const optionsKey = `${options.useTimeDecay}-${options.aggregationMode}-${options.includeUncertainty}-${options.usePrimeModular}`;
   useEffect(() => {
+    const cached = sentimentDataCache[cacheKey];
+    if (cached && cached.current !== undefined && cached.historical !== undefined) {
+      setCurrent(cached.current);
+      setHistorical(cached.historical);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     Promise.all([fetchCurrent(), fetchHistorical()]).finally(() =>
       setLoading(false)

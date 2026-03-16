@@ -3,8 +3,17 @@
 
 import { STORAGE_KEYS } from '../utils/storageKeys';
 
-// Storage adapter: when set (e.g. by React components with useStorage), uses API/PostgreSQL; otherwise localStorage
+// Storage adapter: when set (e.g. by React components with useStorage), uses API/PostgreSQL
 let storageAdapter = null;
+const STORAGE_ADAPTER_WAIT_MS = 3000;
+const STORAGE_ADAPTER_POLL_MS = 50;
+
+async function waitForAdapter() {
+  const deadline = Date.now() + STORAGE_ADAPTER_WAIT_MS;
+  while (!storageAdapter?.getItem && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, STORAGE_ADAPTER_POLL_MS));
+  }
+}
 
 export function setMonitorStorageAdapter(adapter) {
   storageAdapter = adapter;
@@ -645,9 +654,10 @@ const convertToMonitor = (symbol, apiResult) => {
   }
 };
 
-// Read from storage (adapter or localStorage)
+// Read from storage (wait briefly for adapter to avoid first-load race, then use adapter or localStorage)
 const getStorageValue = async (key) => {
   try {
+    if (!storageAdapter?.getItem) await waitForAdapter();
     if (storageAdapter?.getItem) {
       return await storageAdapter.getItem(key);
     }
@@ -662,6 +672,7 @@ const getStorageValue = async (key) => {
 
 const setStorageValue = async (key, value) => {
   try {
+    if (!storageAdapter?.setItem) await waitForAdapter();
     if (storageAdapter?.setItem) {
       await storageAdapter.setItem(key, value);
       return;

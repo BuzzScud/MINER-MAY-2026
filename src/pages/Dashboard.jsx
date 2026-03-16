@@ -501,7 +501,7 @@ function SortableStockCard({ id, symbol, data, loading, onRemove, showTooltips =
                   e.stopPropagation();
                   onRemove();
                 }}
-                className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                 title={showTooltips ? 'Remove symbol' : undefined}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -543,7 +543,7 @@ function SortableStockCard({ id, symbol, data, loading, onRemove, showTooltips =
                   e.stopPropagation();
                   onRemove();
                 }}
-                className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                 title={showTooltips ? 'Remove symbol' : undefined}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -583,7 +583,7 @@ function SortableStockCard({ id, symbol, data, loading, onRemove, showTooltips =
                 e.stopPropagation();
                 onRemove();
               }}
-              className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
               title={showTooltips ? 'Remove symbol' : undefined}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -662,7 +662,7 @@ function SortableStockCard({ id, symbol, data, loading, onRemove, showTooltips =
                 e.stopPropagation();
                 onRemove();
               }}
-              className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
               title={showTooltips ? 'Remove symbol' : undefined}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -720,7 +720,7 @@ function StockInfoCard({ symbol, data, loading, onRemove }) {
               <button
                 type="button"
                 onClick={onRemove}
-                className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                 title={showTooltips ? 'Remove symbol' : undefined}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -748,7 +748,7 @@ function StockInfoCard({ symbol, data, loading, onRemove }) {
               <button
                 type="button"
                 onClick={onRemove}
-                className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                 title={showTooltips ? 'Remove symbol' : undefined}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -774,7 +774,7 @@ function StockInfoCard({ symbol, data, loading, onRemove }) {
             <button
               type="button"
               onClick={onRemove}
-              className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
               title={showTooltips ? 'Remove symbol' : undefined}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -839,7 +839,7 @@ function StockInfoCard({ symbol, data, loading, onRemove }) {
             <button
               type="button"
               onClick={onRemove}
-              className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
               title={showTooltips ? 'Remove symbol' : undefined}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1175,7 +1175,7 @@ function Dashboard() {
                     type="button"
                     onClick={loadStockData}
                     disabled={loading}
-                    className="rounded bg-gray-200 dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                    className="min-h-[44px] rounded bg-gray-200 dark:bg-gray-700 px-4 py-2.5 text-sm text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
                   >
                     <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -1200,7 +1200,7 @@ function Dashboard() {
                   type="button"
                   onClick={addSymbol}
                   disabled={addingSymbol || !newSymbolInput.trim()}
-                  className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="min-h-[44px] px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {addingSymbol ? (
                     <>

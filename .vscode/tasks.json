@@ -8,9 +8,7 @@
       "label": "npm: dev",
       "detail": "vite",
       "isBackground": true,
-      "runOptions": {
-        "runOn": "folderOpen"
-      }
+      "runOptions": {}
     }
   ]
 }

@@ -119,6 +119,36 @@ export async function migrateLocalToApi(token) {
       /* skip */
     }
   }
+  // Migrate legacy stabilizedModel_* keys into single STABILIZED_MODELS object
+  const stabilizedModels = {};
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('stabilizedModel_')) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          try {
+            const value = JSON.parse(raw);
+            const symbol = key.replace(/^stabilizedModel_/, '');
+            if (symbol && typeof value === 'object' && value !== null) {
+              stabilizedModels[symbol] = value;
+            }
+          } catch {
+            /* skip */
+          }
+        }
+      }
+    }
+    if (Object.keys(stabilizedModels).length > 0) {
+      const existing = updates[STORAGE_KEYS.STABILIZED_MODELS];
+      updates[STORAGE_KEYS.STABILIZED_MODELS] =
+        typeof existing === 'object' && existing
+          ? { ...existing, ...stabilizedModels }
+          : stabilizedModels;
+    }
+  } catch {
+    /* ignore */
+  }
   if (Object.keys(updates).length > 0) {
     await api.saveBatch(token, updates);
   }

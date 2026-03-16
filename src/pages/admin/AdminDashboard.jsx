@@ -362,9 +362,27 @@ export default function AdminDashboard() {
   }, [showRestartOverlay]);
 
   useEffect(() => {
-    if (showRestartOverlay && restartCountdown === 0) {
-      window.location.href = '/';
-    }
+    if (!showRestartOverlay || restartCountdown !== 0) return;
+    let cancelled = false;
+    const maxAttempts = 30;
+    let attempts = 0;
+    const poll = async () => {
+      if (cancelled || attempts >= maxAttempts) {
+        if (!cancelled) window.location.href = '/';
+        return;
+      }
+      attempts += 1;
+      try {
+        const res = await fetch('/api/health', { method: 'GET' });
+        if (res.ok) {
+          window.location.href = '/';
+          return;
+        }
+      } catch (_) {}
+      setTimeout(poll, 1000);
+    };
+    poll();
+    return () => { cancelled = true; };
   }, [showRestartOverlay, restartCountdown]);
 
   const chartData = latencyHistory.map((p) => ({

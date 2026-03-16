@@ -23,8 +23,6 @@ export const STORAGE_KEYS = {
   PROJECTION_RECENT_SEARCHES: 'projectionRecentSearches',
   PROJECTION_LAST_SYMBOL: 'projectionLastSymbol',
   PROJECTION_LAST_INTERVAL: 'projectionLastInterval',
-  PROJECTION_STEPS: 'projectionSteps',
-  PROJECTION_HOURS: 'projectionHours',
   TRADING_RECENT_SEARCHES: 'tradingRecentSearches',
   TRADING_LAST_SYMBOL: 'tradingLastSymbol',
   TRADING_LAST_INTERVAL: 'tradingLastInterval',
@@ -39,4 +37,7 @@ export const STORAGE_KEYS = {
   FIB_PRECISION: 'fibStuffPrecision',
   DELETED_MONITORS: 'deletedMonitors',
   SAVED_PROJECTIONS_STORAGE: 'savedProjectionsStorage',
+  ANNOUNCEMENT_DISMISSED: 'announcement_dismissed',
+  STABILIZED_MODELS: 'stabilizedModels',
+  CME_LAST_SYMBOL: 'cmeLastSymbol',
 };
