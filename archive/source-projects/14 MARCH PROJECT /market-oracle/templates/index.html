@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Market Oracle</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            neonGreen: '#00ff88',
+            neonRed: '#ff4444',
+            panel: '#0a0f1a',
+            surface: '#111827',
+            card: '#0f172a',
+          },
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          animation: {
+            'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'fade-in': 'fadeIn 0.35s ease-out',
+          },
+          keyframes: {
+            fadeIn: { '0%': { opacity: '0', transform: 'translateY(6px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    .card-border { border: 1px solid rgba(30, 41, 59, 0.8); }
+    .card-border:hover { border-color: rgba(0, 255, 136, 0.2); }
+    .btn-primary { background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%); color: #0a0f1a; }
+    .btn-primary:hover { opacity: 0.92; box-shadow: 0 0 24px rgba(0, 255, 136, 0.25); }
+    #loadingOverlay { display: none; }
+    #loadingOverlay.active { display: flex; }
+    .metric-card { background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.6) 100%); }
+    .chart-wrap { min-height: 380px; }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 font-sans min-h-screen antialiased">
+  <!-- Nav -->
+  <nav class="border-b border-gray-800/80 bg-panel/95 backdrop-blur-md sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <span class="w-2.5 h-2.5 rounded-full bg-neonGreen animate-pulse-slow shadow-[0_0_8px_rgba(0,255,136,0.6)]"></span>
+        <span class="font-semibold text-lg tracking-tight text-white">Market Oracle</span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <!-- Metrics strip (always visible, updates with data) -->
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="metric-card card-border rounded-xl p-4 transition-colors">
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Current</p>
+        <p id="currentPrice" class="text-2xl font-bold text-white tabular-nums">—</p>
+      </div>
+      <div class="metric-card card-border rounded-xl p-4 transition-colors">
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Predicted</p>
+        <p id="predictedPrice" class="text-2xl font-bold text-white tabular-nums">—</p>
+      </div>
+      <div class="metric-card card-border rounded-xl p-4 transition-colors">
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Change</p>
+        <p id="pctChange" class="text-2xl font-bold tabular-nums flex items-center gap-1.5">
+          <span id="directionArrow" class="text-lg">—</span>
+          <span id="pctChangeVal">—</span>
+        </p>
+      </div>
+      <div class="metric-card card-border rounded-xl p-4 transition-colors">
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Confidence</p>
+        <p id="confidenceVal" class="text-2xl font-bold text-white tabular-nums mb-2">—</p>
+        <div class="h-1.5 rounded-full bg-surface overflow-hidden">
+          <div id="confidenceBar" class="h-full rounded-full bg-neonGreen transition-all duration-700" style="width: 0%"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chart up: always visible -->
+    <section class="card-border rounded-xl bg-card p-5 transition-colors">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-medium text-gray-400 uppercase tracking-wider">Historical & forecast</h2>
+        <span id="chartTicker" class="text-xs text-gray-500 font-mono">—</span>
+      </div>
+      <div class="chart-wrap relative">
+        <canvas id="chartCanvas"></canvas>
+        <div id="chartPlaceholder" class="absolute inset-0 flex items-center justify-center bg-card/80 rounded-lg">
+          <div class="flex flex-col items-center gap-3 text-gray-500">
+            <div class="w-8 h-8 border-2 border-neonGreen/50 border-t-transparent rounded-full animate-spin"></div>
+            <span class="text-sm">Loading QQQ…</span>
+          </div>
+        </div>
+      </div>
+      <div id="chartLegend" class="mt-3 flex flex-wrap gap-4 text-xs text-gray-500 hidden">
+        <span><span class="inline-block w-4 h-0.5 bg-[#00ff88] align-middle mr-1"></span> Historical</span>
+        <span><span class="inline-block w-4 h-0.5 border-t-2 border-dashed border-[#ff6b4a] align-middle mr-1"></span> Predicted</span>
+        <span><span class="inline-block w-4 h-1 bg-amber-500/30 align-middle mr-1 rounded"></span> Confidence band</span>
+        <span><span class="inline-block w-px h-3 bg-gray-500 align-middle mr-1"></span> Today</span>
+      </div>
+    </section>
+
+    <!-- Form + Summary row -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+      <div class="lg:col-span-4 flex">
+        <div class="card-border rounded-xl bg-card p-6 transition-colors w-full h-full flex flex-col">
+          <h2 class="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">Run prediction</h2>
+          <form id="predictForm" class="space-y-4">
+            <div>
+              <label for="ticker" class="block text-sm font-medium text-gray-400 mb-1.5">Ticker</label>
+              <input type="text" id="ticker" name="ticker" value="QQQ" placeholder="e.g. QQQ, AAPL, BTC" maxlength="20"
+                autocomplete="off" class="w-full rounded-lg bg-surface border border-gray-700 text-white placeholder-gray-500 px-4 py-2.5 focus:ring-2 focus:ring-neonGreen/40 focus:border-neonGreen/50 outline-none transition" />
+            </div>
+            <div>
+              <label for="assetType" class="block text-sm font-medium text-gray-400 mb-1.5">Asset type</label>
+              <select id="assetType" name="asset_type"
+                class="w-full rounded-lg bg-surface border border-gray-700 text-white px-4 py-2.5 focus:ring-2 focus:ring-neonGreen/40 focus:border-neonGreen/50 outline-none transition">
+                <option value="stock">Stock</option>
+                <option value="crypto">Crypto</option>
+              </select>
+            </div>
+            <div>
+              <label for="horizon" class="block text-sm font-medium text-gray-400 mb-1.5">Horizon</label>
+              <select id="horizon" name="horizon"
+                class="w-full rounded-lg bg-surface border border-gray-700 text-white px-4 py-2.5 focus:ring-2 focus:ring-neonGreen/40 focus:border-neonGreen/50 outline-none transition">
+                <option value="7">7 days</option>
+                <option value="30" selected>30 days</option>
+                <option value="90">90 days</option>
+              </select>
+            </div>
+            <button type="submit" id="submitBtn"
+              class="w-full btn-primary font-semibold rounded-lg py-3 px-4 transition">Run Prediction</button>
+          </form>
+        </div>
+      </div>
+      <div class="lg:col-span-8 flex">
+        <div class="card-border rounded-xl bg-card p-6 transition-colors w-full h-full flex flex-col">
+          <h2 class="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">Summary</h2>
+          <div id="summaryMetrics" class="grid grid-cols-2 gap-4 flex-1">
+            <!-- Col 1 -->
+            <div class="metric-card card-border rounded-lg p-3">
+              <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Crystalline Score</p>
+              <div class="flex flex-col gap-2">
+                <div class="flex items-center gap-2">
+                  <span id="crystallineScoreVal" class="text-lg font-bold tabular-nums">—</span>
+                  <span class="text-xs text-gray-500">(range -4 to +4)</span>
+                </div>
+                <div class="h-2 w-full rounded-full bg-surface overflow-hidden">
+                  <div id="crystallineScoreBar" class="h-full rounded-full transition-all duration-500" style="width: 50%; background: #00ff88;"></div>
+                </div>
+                <p class="text-xs text-gray-500">Trend: <span id="trendScoreVal">—</span> · Vol: <span id="volScoreVal">—</span> · Risk: <span id="riskScoreVal">—</span></p>
+              </div>
+            </div>
+            <div class="metric-card card-border rounded-lg p-3">
+              <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Clock Lattice</p>
+              <div class="flex flex-col gap-1 text-sm">
+                <span>Position: <strong id="clockPositionVal" class="tabular-nums text-white">—</strong>/11</span>
+                <span id="primeAlignmentVal" class="text-gray-400">—</span>
+                <span id="piPhiResonanceVal" class="text-gray-400">—</span>
+              </div>
+            </div>
+            <div class="metric-card card-border rounded-lg p-3">
+              <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Fibonacci Levels</p>
+              <div class="space-y-1 text-xs">
+                <div>Swing High: <span id="swingHighVal" class="font-mono tabular-nums text-white">—</span></div>
+                <div>Swing Low: <span id="swingLowVal" class="font-mono tabular-nums text-white">—</span></div>
+                <div>0.382: <span id="fib0382Val" class="font-mono tabular-nums text-gray-300">—</span></div>
+                <div>0.618 (OTE): <span id="fib0618Val" class="font-mono tabular-nums text-gray-300">—</span></div>
+                <div>0.786: <span id="fib0786Val" class="font-mono tabular-nums text-gray-300">—</span></div>
+                <p class="text-gray-500 pt-1">Confluence: <span id="fibConfluenceVal">—</span></p>
+              </div>
+            </div>
+            <!-- Col 2 -->
+            <div class="metric-card card-border rounded-lg p-3">
+              <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Risk Metrics</p>
+              <div class="flex flex-col gap-1 text-sm">
+                <span>Risk ratio: <span id="riskRatioVal" class="font-mono tabular-nums text-white">—</span></span>
+                <span>Ann. volatility: <span id="volatilityAnnualVal" class="font-mono tabular-nums text-white">—</span></span>
+              </div>
+            </div>
+            <div class="metric-card card-border rounded-lg p-3">
+              <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Phi Extension Target</p>
+              <p class="text-sm"><span id="phiTargetVal" class="font-mono font-semibold tabular-nums text-white">—</span></p>
+            </div>
+            <!-- Summary sentence: full width -->
+            <p id="summaryText" class="text-gray-300 leading-relaxed col-span-2">—</p>
+          </div>
+          <p class="text-xs text-gray-500 mt-4">Not financial advice. For educational and research purposes only.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Loading overlay -->
+  <div id="loadingOverlay" class="fixed inset-0 bg-gray-950/90 backdrop-blur-sm flex items-center justify-center z-20">
+    <div class="flex flex-col items-center gap-4">
+      <div class="w-10 h-10 border-2 border-neonGreen border-t-transparent rounded-full animate-spin"></div>
+      <p class="text-gray-400">Running prediction…</p>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
