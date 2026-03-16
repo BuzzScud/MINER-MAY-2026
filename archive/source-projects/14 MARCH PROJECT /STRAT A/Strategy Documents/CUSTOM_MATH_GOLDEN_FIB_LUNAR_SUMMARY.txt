@@ -1,0 +1,73 @@
+================================================================================
+CUSTOM MATH: GOLDEN RATIO, FIBONACCI, MOON PHASES – TRADING STRATEGY SUMMARY
+================================================================================
+(Save this for next context window when continuing AlpacaPaperTrader + Custom Math)
+
+--------------------------------------------------------------------------------
+1. GOLDEN RATIO (φ) IN CUSTOM MATH
+--------------------------------------------------------------------------------
+- math/include/math/constants.h: MATH_PHI ≈ 1.618, MATH_PHI_SQUARED, MATH_PHI_INVERSE, MATH_PI_TIMES_PHI (π×φ ≈ 5.083), MATH_PHI_FIBONACCI = 89/55
+- THESIS_SECTION_14_15_PLATONIC_DUALITY.md: Icosahedron vertices use φ in coordinates: (0, ±1, ±φ), (1, ±φ, 0), (φ, 0, ±1)
+- section_4_original.txt: φ as proportion, self-similar scaling by φ, "Fibonacci spirals" on clock lattice, primes at positions related to φ
+- documents/PI_PHI_INVESTIGATION.md: π×φ in prime gaps, φ growth (e.g. φ^(magnitude/100)), hyperdimensional projection
+- RECOVERY_REIMPLEMENTATION_STATUS.md: "Icosahedron vertex placement using golden ratio"
+- prototypes/pure_geometric/core/geometric_types.h: RATIONAL_PHI, GOLDEN_RATIO_NUM/DEN for exact rational geometry
+
+Strategy use: Golden-ratio retracement levels (0.382, 0.618), φ-based scaling of targets/stops, φ-aligned price levels.
+
+--------------------------------------------------------------------------------
+2. FIBONACCI IN CUSTOM MATH
+--------------------------------------------------------------------------------
+- constants.h: MATH_PHI_FIBONACCI_NUM 89, MATH_PHI_FIBONACCI_DEN 55 (89/55 ≈ φ) – Fibonacci sequence tied to φ
+- section_4_original.txt: "Appears in Fibonacci sequence, pentagons, spirals"; "Fibonacci Spirals: The clock lattice exhibits Fibonacci spirals with ratio φ"
+
+Strategy use: Fibonacci retracements/extensions (0.236, 0.382, 0.5, 0.618, 0.786), Fib time zones (bar counts 1,1,2,3,5,8,13,21...), same constants as Custom Math.
+
+--------------------------------------------------------------------------------
+3. MOON / LUNAR / PHASES IN CUSTOM MATH
+--------------------------------------------------------------------------------
+- math/include/math/constants.h:
+  - LUNAR_MONTH 29.53059   (synodic month in days)
+  - SAROS_CYCLE 223        (eclipse cycle, 223 synodic months)
+  - METONIC_CYCLE 235      (lunar-solar sync, 19 years = 235 months)
+  - METONIC_YEARS 19
+- SECONDARY_OBJECTIVES.md, TERTIARY_OBJECTIVES.md, MASTER_PLAN.md: Saros and Metonic as cycles mapping to clock rings (223, 235)
+- No explicit "phase of moon" (0–1 or day 0–28) in codebase; LUNAR_MONTH and cycles are the building blocks
+
+Strategy use: Compute "day in synodic month" or phase (0=new, 0.5=full) from datetime using LUNAR_MONTH; optional filter (e.g. only trade near full/new moon) or Saros/Metonic cycle position for regime.
+
+--------------------------------------------------------------------------------
+4. HOW THIS TIES INTO THE TRADING STRATEGY (ALPACA PAPER TRADER)
+--------------------------------------------------------------------------------
+- custom_math/ already has: statistics, clock_lattice, signal (Crystalline score, ring distribution, half-series trend, 20/50-min decision windows).
+- ADD in custom_math/:
+  - constants: PHI, PI_TIMES_PHI, LUNAR_MONTH (mirror Custom Math constants.h).
+  - golden_ratio.py: retracement levels (0.382, 0.618) from recent high/low; optional φ-aligned bands.
+  - fibonacci.py: Fib retracement levels and/or Fib time sequence (1,1,2,3,5,8,13,21...) for price or bar-count time.
+  - lunar.py: from datetime compute "day in synodic month" and/or phase (0–1) using LUNAR_MONTH; optional Saros/Metonic cycle position.
+- In strategy/signal: keep Crystalline score + clock lattice; ADD:
+  - Price near φ or Fib level (e.g. 0.618 retracement) as extra condition for entries.
+  - Optional moon-phase filter (e.g. only allow buys in waxing / near full moon, sells near new moon – or define rule).
+  - Optional Fib time: only evaluate at bars that fall on Fibonacci bar counts from a swing.
+
+--------------------------------------------------------------------------------
+5. KEY FILE PATHS (CUSTOM MATH)
+--------------------------------------------------------------------------------
+- Constants: Custom Math/math/include/math/constants.h
+- π×φ investigation: Custom Math/documents/PI_PHI_INVESTIGATION.md
+- Platonic φ: Custom Math/THESIS_SECTION_14_15_PLATONIC_DUALITY.md
+- Section 4 φ: Custom Math/section_4_original.txt (φ as proportion, Fibonacci spirals)
+- Lunar: constants.h LUNAR_MONTH, SAROS_CYCLE, METONIC_CYCLE; TERTIARY_OBJECTIVES.md Saros/Metonic
+
+--------------------------------------------------------------------------------
+6. ALPACA PAPER TRADER CONTEXT
+--------------------------------------------------------------------------------
+- Project: alpaca_paper_trader/ (paper only, dark CustomTkinter, Start/Stop, PNL, positions, orders, symbol manager, watched.json).
+- Strategy: run_cycle(bar_data_dict); decision windows at minutes 15, 20, 25, 45, 50, 55 (5 min before/after 20 and 50).
+- custom_math: statistics.py, clock_lattice.py, signal.py (your_signal_function with Crystalline score, ring distribution, bar_history).
+- Config: FOCUS_MINUTES = (15, 20, 25, 45, 50, 55), BAR_HISTORY_MAX = 120, etc.
+- User wants to add: golden ratio, Fib sequence, moon phases into the strategy, tying into Custom Math.
+
+================================================================================
+END OF SUMMARY
+================================================================================

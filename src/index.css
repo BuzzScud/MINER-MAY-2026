@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Preline UI base styles */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/* Hide scrollbars but maintain scroll functionality */
+html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: -moz-scrollbars-none; /* Firefox - hide scrollbar */
+  -ms-overflow-style: none; /* IE and Edge - hide scrollbar */
+  scrollbar-width: none; /* Firefox - hide scrollbar */
+}
+
+html::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera - hide scrollbar */
+}
+
+body {
+  margin: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  min-width: 320px;
+  height: 100%;
+  overflow: hidden; /* Prevent body scroll - layout handles scrolling */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  overflow: -moz-scrollbars-none; /* Firefox - hide scrollbar */
+  -ms-overflow-style: none; /* IE and Edge - hide scrollbar */
+  scrollbar-width: none; /* Firefox - hide scrollbar */
+}
+
+body::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera - hide scrollbar */
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Hide scrollbars for all elements but maintain scroll functionality */
+* {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* iOS scroll container: smooth scrolling and contain overscroll */
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Appearance settings (data attributes on html) */
+html[data-font-size="small"] { font-size: 14px; }
+html[data-font-size="medium"] { font-size: 16px; }
+html[data-font-size="large"] { font-size: 18px; }
+
+html[data-animations="off"] * {
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
+}
+
+html[data-reduced-motion="on"] * {
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
+}
+
+html[data-high-contrast="on"] {
+  --tw-ring-color: 0 0 0 2px;
+}
+html[data-high-contrast="on"] .border-gray-200 { border-color: #374151; }
+html[data-high-contrast="on"] .border-gray-700 { border-color: #9ca3af; }
+
+/* Trading Bot metric value change flash */
+@keyframes flash-up {
+  0% { background-color: rgba(34, 197, 94, 0.25); }
+  100% { background-color: transparent; }
+}
+.flash-up {
+  animation: flash-up 0.4s ease-out;
+}

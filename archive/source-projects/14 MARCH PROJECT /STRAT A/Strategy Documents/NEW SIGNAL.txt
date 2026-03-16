@@ -1,0 +1,152 @@
+from __future__ import annotations
+from types import SimpleNamespace
+from typing import Any
+
+from custom_math.statistics import statistics
+from custom_math import golden_ratio
+from custom_math import fibonacci
+
+
+def _minute_of_hour(bar_data: Any) -> int | None:
+    """Extract minute (0-59) from bar timestamp."""
+    ts = getattr(bar_data, "timestamp", None)
+    if ts is None:
+        return None
+    try:
+        if hasattr(ts, "minute"):
+            return ts.minute
+        # ISO string fallback
+        s = str(ts).replace("Z", "+00:00")
+        dt = datetime.fromisoformat(s)  # need from datetime import datetime at top
+        return dt.minute
+    except Exception:
+        return None
+
+
+def _default_config() -> SimpleNamespace:
+    return SimpleNamespace(
+        USE_GOLDEN_FIB=True,           # keep for dynamic exits
+        VOLUME_SURGE_MULT=1.5,         # 1.5x average = strong confirmation
+        MIN_ATR_PULLBACK=0.5,          # require meaningful move
+        BAR_HISTORY_MAX=120,
+    )
+
+
+def your_signal_function(
+    symbol: str,
+    bar_data: Any,
+    broker: Any,
+    bar_history: list[Any] | None = None,
+    *,
+    config: Any = None,
+) -> str:
+    """
+    SIMPLIFIED HIGH-EDGE SIGNAL v2.0
+    - Only fires in decision windows
+    - Trend + Fib discount/premium + volume surge + ATR filter
+    - Extremely clean and robust
+    """
+    if bar_history is None:
+        bar_history = []
+    cfg = config if config is not None else _default_config()
+
+    # === 1. DECISION WINDOW FILTER (most important) ===
+    minute = _minute_of_hour(bar_data)
+    if minute not in (15, 20, 25, 45, 50, 55):
+        return "hold"
+
+    closes = [float(getattr(b, "close", 0) or 0) for b in bar_history]
+    volumes = [float(getattr(b, "volume", 0) or 0) for b in bar_history]
+    current_close = float(getattr(bar_data, "close", 0) or 0)
+    current_vol = float(getattr(bar_data, "volume", 0) or 0)
+
+    if len(closes) < 30 or current_close <= 0:
+        return "hold"
+
+    closes = (closes + [current_close])[-120:]
+    volumes = (volumes + [current_vol])[-120:]
+
+    # === 2. TREND (half-series) ===
+    half = max(1, len(closes) // 2)
+    mean_diff_pct = statistics(closes[half:])["mean"] - statistics(closes[:half])["mean"]
+    mean_diff_pct = (mean_diff_pct / statistics(closes)["mean"]) * 100.0 if statistics(closes)["mean"] > 0 else 0.0
+
+    bullish_trend = mean_diff_pct > 0.8
+    bearish_trend = mean_diff_pct < -0.8
+
+    # === 3. SWING + FIB ZONES ===
+    swing_low, swing_high, _, _ = recent_swing_high_low(closes, 30)  # keep your helper
+    if swing_high <= swing_low:
+        return "hold"
+
+    in_discount = fibonacci.in_discount_zone(current_close, swing_high, swing_low)
+    in_premium = fibonacci.in_premium_zone(current_close, swing_high, swing_low)
+    in_ote = fibonacci.price_in_ote_zone(current_close, swing_high, swing_low, 2.0)
+
+    # === 4. VOLUME SURGE ===
+    if len(volumes) >= 20:
+        avg_vol = sum(volumes[-20:-1]) / 19
+        volume_surge = current_vol > avg_vol * cfg.VOLUME_SURGE_MULT
+    else:
+        volume_surge = False
+
+    # === 5. ATR FILTER ===
+    atr = _atr_from_bars(bar_history, bar_data, 14)
+    equilibrium = (swing_high + swing_low) / 2.0
+    atr_dist = abs(current_close - equilibrium) / atr if atr > 0 else 0
+
+    # === 6. PHI EXTENSION EXITS (keep your excellent code) ===
+    if cfg.USE_GOLDEN_FIB:
+        try:
+            positions = broker.get_positions() if hasattr(broker, "get_positions") else []
+            for pos in positions:
+                psym = getattr(pos, "symbol", "") or getattr(pos, "symbol_id", "")
+                if not _symbol_eq(psym, symbol):
+                    continue
+                avg_entry = float(getattr(pos, "avg_entry_price", 0) or 0)
+                qty = float(getattr(pos, "qty", 0) or 0)
+                if avg_entry <= 0 or qty == 0:
+                    continue
+                scale = atr if atr > 0 else (max(closes) - min(closes))
+                if qty > 0:  # long
+                    for level in golden_ratio.extension_levels(avg_entry, scale, "above"):
+                        if current_close >= level:
+                            return "sell"
+                else:  # short
+                    for level in golden_ratio.extension_levels(avg_entry, scale, "below"):
+                        if current_close <= level:
+                            return "buy"
+                break
+        except Exception:
+            pass
+
+    # === FINAL CONFLUENCE RULES (very strict = high edge) ===
+    if (bullish_trend and (in_discount or in_ote) and volume_surge and 0.5 <= atr_dist <= 4.0):
+        return "buy"
+
+    if (bearish_trend and in_premium and volume_surge and 0.5 <= atr_dist <= 4.0):
+        return "sell"
+
+    return "hold"
+
+
+# Keep your existing recent_swing_high_low, _atr_from_bars, _symbol_eq exactly as they are
+
+def get_signal_context(...):   # updated version
+    # ... (same structure as before but with new fields)
+    out = {
+        "current_close": current_close,
+        "mean_diff_pct": mean_diff_pct,
+        "bullish_trend": bullish_trend,
+        "bearish_trend": bearish_trend,
+        "in_discount": in_discount,
+        "in_premium": in_premium,
+        "in_ote": in_ote,
+        "volume_surge": volume_surge,
+        "atr": atr,
+        "atr_dist": atr_dist,
+        "swing_low": swing_low,
+        "swing_high": swing_high,
+        # add any others you want for logging
+    }
+    return {k: _serializable_value(v) for k, v in out.items()}

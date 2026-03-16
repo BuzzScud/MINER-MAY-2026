@@ -1,0 +1,23 @@
+{
+  "name": "ALGO-1 - Financial Analysis Platform",
+  "short_name": "ALGO-1",
+  "description": "Advanced financial analysis and projection tool with real-time market data, trading charts, and algorithmic projections",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#3b82f6",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
