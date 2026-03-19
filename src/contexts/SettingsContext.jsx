@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
-import { getItem, setItem } from '../utils/storage';
+import { getItems, setItem } from '../utils/storage';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 
 const DEFAULT_GENERAL = {
@@ -48,15 +48,15 @@ export function SettingsProvider({ children }) {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const [gen, ref, notif] = await Promise.all([
-        getItem(token, STORAGE_KEYS.GENERAL_SETTINGS),
-        getItem(token, STORAGE_KEYS.REFRESH_INTERVAL),
-        getItem(token, STORAGE_KEYS.NOTIFICATION_SETTINGS),
+      const loadedSettings = await getItems(token, [
+        STORAGE_KEYS.GENERAL_SETTINGS,
+        STORAGE_KEYS.REFRESH_INTERVAL,
+        STORAGE_KEYS.NOTIFICATION_SETTINGS,
       ]);
       if (cancelled) return;
-      setGeneralSettingsState(parseGeneral(gen));
-      setRefreshIntervalState(parseRefreshInterval(ref));
-      setNotificationsState(parseNotifications(notif));
+      setGeneralSettingsState(parseGeneral(loadedSettings[STORAGE_KEYS.GENERAL_SETTINGS]));
+      setRefreshIntervalState(parseRefreshInterval(loadedSettings[STORAGE_KEYS.REFRESH_INTERVAL]));
+      setNotificationsState(parseNotifications(loadedSettings[STORAGE_KEYS.NOTIFICATION_SETTINGS]));
       setLoaded(true);
     }
     load();

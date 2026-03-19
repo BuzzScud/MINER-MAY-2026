@@ -120,7 +120,7 @@ export function AuthProvider({ children }) {
           if (res.status === 401) setToken(null);
         })
         .catch(() => {});
-    }, 5000);
+    }, 60000);
     return () => clearInterval(interval);
   }, [token, setToken]);
 

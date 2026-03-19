@@ -8,37 +8,36 @@ function EconomicCalendarWidget({ width = "100%", height = 550, colorTheme = "da
   const container = useRef();
 
   useEffect(() => {
-    const el = container.current;
-    if (!el || !document.body.contains(el)) return;
+    const mountNode = container.current;
+    if (!mountNode || !document.body.contains(mountNode)) return;
 
-    el.replaceChildren();
-    const widgetContainer = document.createElement("div");
-    widgetContainer.className = "tradingview-widget-container__widget";
+    // In React StrictMode (dev), effects mount/unmount twice. Delay insertion so
+    // the first transient mount is cancelled before loading TradingView script.
+    const initTimerId = window.setTimeout(() => {
+      if (!container.current || !document.body.contains(container.current)) return;
 
-    const script = document.createElement("script");
-    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-events.js";
-    script.type = "text/javascript";
-    script.async = true;
-    script.textContent = JSON.stringify({
-      colorTheme: colorTheme,
-      isTransparent: true,
-      width: width,
-      height: height,
-      locale: "en",
-      importanceFilter: "0,1",
-      countryFilter: "ar,au,br,ca,cn,fr,de,in,id,it,jp,kr,mx,ru,sa,za,tr,gb,us,eu"
-    });
+      const widgetContainer = document.createElement("div");
+      widgetContainer.className = "tradingview-widget-container__widget";
 
-    el.appendChild(widgetContainer);
-    el.appendChild(script);
+      const script = document.createElement("script");
+      script.src = "https://s3.tradingview.com/external-embedding/embed-widget-events.js";
+      script.type = "text/javascript";
+      script.async = true;
+      script.textContent = JSON.stringify({
+        colorTheme,
+        isTransparent: true,
+        width,
+        height,
+        locale: "en",
+        importanceFilter: "0,1",
+        countryFilter: "ar,au,br,ca,cn,fr,de,in,id,it,jp,kr,mx,ru,sa,za,tr,gb,us,eu",
+      });
+
+      container.current.replaceChildren(widgetContainer, script);
+    }, 0);
 
     return () => {
-      const target = container.current;
-      if (!target) return;
-      // Delay clear so TradingView script (runs async) does not run after DOM is cleared
-      setTimeout(() => {
-        if (target.parentNode) target.replaceChildren();
-      }, 150);
+      window.clearTimeout(initTimerId);
     };
   }, [width, height, colorTheme]);
 

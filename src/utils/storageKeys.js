@@ -5,6 +5,7 @@
 export const STORAGE_KEYS = {
   SIDEBAR_NAV: 'sidebarNav',
   DARK_MODE: 'darkMode',
+  ACCOUNTS: 'accounts',
   DASHBOARD_SYMBOLS: 'dashboardSymbols',
   DASHBOARD_WORLD_CLOCKS: 'dashboardWorldClocks',
   DASHBOARD_SECTION_ORDER: 'dashboardSectionOrder',

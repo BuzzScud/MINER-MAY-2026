@@ -47,16 +47,48 @@ export async function getItem(token, key) {
   }
 }
 
-export async function setItem(token, key, value) {
+export async function getItems(token, keys) {
+  if (!Array.isArray(keys) || keys.length === 0) {
+    return {};
+  }
+
+  const uniqueKeys = Array.from(new Set(keys.filter((key) => typeof key === 'string' && key)));
+
+  if (uniqueKeys.length === 0) {
+    return {};
+  }
+
   if (token && !isBackendInCooldown()) {
     try {
-      await api.saveData(token, key, value);
-      return;
+      return await api.loadData(token, uniqueKeys);
     } catch {
       setBackendCooldown();
     }
   }
-  localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value ?? null));
+
+  const localData = {};
+  for (const key of uniqueKeys) {
+    try {
+      const raw = localStorage.getItem(key);
+      localData[key] = raw == null ? null : JSON.parse(raw);
+    } catch {
+      localData[key] = null;
+    }
+  }
+  return localData;
+}
+
+export async function setItem(token, key, value) {
+  const serialized = typeof value === 'string' ? value : JSON.stringify(value ?? null);
+  localStorage.setItem(key, serialized);
+
+  if (token && !isBackendInCooldown()) {
+    try {
+      await api.saveData(token, key, value);
+    } catch {
+      setBackendCooldown();
+    }
+  }
 }
 
 export async function loadAll(token) {

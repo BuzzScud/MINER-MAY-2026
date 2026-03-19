@@ -12,10 +12,11 @@ const SIDEBAR_NAV_KEY = STORAGE_KEYS.SIDEBAR_NAV;
 
 const ALL_PAGES = [
   { path: '/', label: 'Dashboard' },
+  { path: '/accounts', label: 'Accounts' },
   { path: '/calendar', label: 'Economic Calendar' },
   { path: '/trading', label: 'Charts' },
   { path: '/projection', label: 'Projection' },
-  { path: '/checklist', label: 'Checklist' },
+
   { path: '/sentiment', label: 'Sentiment' },
   { path: '/budget-tracker', label: 'Budget Tracker' },
   { path: '/miner', label: 'Miner' },
@@ -36,6 +37,11 @@ const PAGE_ICONS = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
     </svg>
   ),
+  '/accounts': (
+    <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a5 5 0 00-10 0v2M5 9h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2z" />
+    </svg>
+  ),
   '/trading': (
     <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
@@ -44,11 +50,6 @@ const PAGE_ICONS = {
   '/projection': (
     <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-    </svg>
-  ),
-  '/checklist': (
-    <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 11l3-3 3 3m-8 4h8M9 5h6a2 2 0 012 2v10a2 2 0 01-2 2H9l-3 2v-2H7a2 2 0 01-2-2V7a2 2 0 012-2z" />
     </svg>
   ),
   '/sentiment': (
@@ -81,8 +82,8 @@ const PAGE_ICONS = {
 
 function getDefaultSections() {
   return [
-    { id: 'dashboard', label: 'Dashboard', pagePaths: ['/', '/calendar'] },
-    { id: 'markets', label: 'Markets', pagePaths: ['/sentiment', '/trading', '/projection', '/checklist'] },
+    { id: 'dashboard', label: 'Dashboard', pagePaths: ['/', '/accounts', '/calendar'] },
+    { id: 'markets', label: 'Markets', pagePaths: ['/sentiment', '/trading', '/projection'] },
     { id: 'crypto', label: 'Crypto', pagePaths: ['/miner'] },
     { id: 'utilities', label: 'Utilities', pagePaths: ['/budget-tracker'] },
     { id: 'settings', label: 'Settings', pagePaths: ['/api-monitor', '/settings'] },

@@ -45,7 +45,7 @@ router.put('/:key', async (req, res) => {
     if (!key || key.length > 100) {
       return res.status(400).json({ error: 'Invalid key' });
     }
-    const valueJson = typeof value === 'string' ? value : JSON.stringify(value ?? null);
+    const valueJson = JSON.stringify(value ?? null);
     await pool.query(
       `INSERT INTO app_data (user_id, key, value, updated_at)
        VALUES ($1, $2, $3::jsonb, now())
@@ -68,7 +68,7 @@ router.post('/batch', async (req, res) => {
     }
     for (const [key, value] of Object.entries(updates)) {
       if (!key || key.length > 100) continue;
-      const valueJson = typeof value === 'string' ? value : JSON.stringify(value ?? null);
+      const valueJson = JSON.stringify(value ?? null);
       await pool.query(
         `INSERT INTO app_data (user_id, key, value, updated_at)
          VALUES ($1, $2, $3::jsonb, now())

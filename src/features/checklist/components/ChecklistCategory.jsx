@@ -1,9 +1,6 @@
-import { ChevronDown, ChevronRight, Pencil } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { ChecklistItem } from './ChecklistItem';
 
-/**
- * Accordion card for one checklist category: header with progress bar and expand/collapse, inline items when expanded.
- */
 export function ChecklistCategory({
   category,
   categoryItemIds,
@@ -11,8 +8,6 @@ export function ChecklistCategory({
   customItemsInCategory,
   labelOverrides,
   displayLabel,
-  isExpanded,
-  onToggleExpand,
   isEditingHeader,
   editingCategoryLabel,
   setEditingCategoryLabel,
@@ -39,19 +34,8 @@ export function ChecklistCategory({
     totalCount > 0 && categoryItemIds.every((id) => selectedCompleted.includes(id));
 
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden transition-shadow hover:shadow-sm">
-      <button
-        type="button"
-        onClick={onToggleExpand}
-        className="w-full flex items-center gap-2 px-3 py-2.5 text-left focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-inset rounded-t-lg"
-      >
-        <span className="text-gray-500 dark:text-gray-400 shrink-0" aria-hidden>
-          {isExpanded ? (
-            <ChevronDown className="w-4 h-4" />
-          ) : (
-            <ChevronRight className="w-4 h-4" />
-          )}
-        </span>
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+      <div className="flex items-start justify-between gap-2 mb-3">
         <div className="min-w-0 flex-1">
           {isEditingHeader ? (
             <input
@@ -70,39 +54,33 @@ export function ChecklistCategory({
               }}
               onClick={(e) => e.stopPropagation()}
               maxLength={100}
-              className="block w-full px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+              className="block w-full px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-xs font-semibold text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
               autoFocus
               aria-label="Edit category title"
             />
           ) : (
-            <>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-200 truncate">
+            <div className="flex items-center gap-2">
+              <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-400">
                 {displayLabel}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                {completedCount} of {totalCount} complete
-              </p>
-              <div className="mt-2 h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden transition-all duration-300">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-300"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-            </>
+              </h2>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                pct === 100
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
+                  : pct > 0
+                    ? 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200'
+                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+              }`}>
+                {completedCount}/{totalCount}
+              </span>
+            </div>
           )}
         </div>
         {!isEditingHeader && (
-          <div
-            className="flex items-center gap-1 shrink-0"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onStartEditCategory(category.id, displayLabel);
-              }}
-              className="p-1.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={() => onStartEditCategory(category.id, displayLabel)}
+              className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               aria-label="Edit category title"
             >
               <Pencil className="w-3.5 h-3.5" />
@@ -110,11 +88,8 @@ export function ChecklistCategory({
             {onDeleteCategory && (
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteCategory(category.id);
-                }}
-                className="p-1.5 rounded text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs font-semibold"
+                onClick={() => onDeleteCategory(category.id)}
+                className="text-[11px] font-medium text-red-500 hover:text-red-400 transition-colors"
                 aria-label="Delete category"
               >
                 Delete
@@ -122,68 +97,91 @@ export function ChecklistCategory({
             )}
           </div>
         )}
-      </button>
+      </div>
 
-      <div
-        className={`grid transition-[grid-template-rows] duration-200 ease-out ${
-          isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-        }`}
-      >
-        <div className="min-h-0 overflow-hidden">
-          <div className="border-t border-gray-200 dark:border-gray-700 px-3 py-2.5 space-y-2">
-            <div className="flex justify-between items-center mb-1">
-              {totalCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => onToggleCategoryAll(category.id)}
-                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
-                >
-                  {allChecked ? 'Uncheck all' : 'Check all'}
-                </button>
-              )}
-            </div>
-            {category.items.map((item) => {
-              const checked = selectedCompleted.includes(item.id);
-              const itemLabel = labelOverrides[item.id]?.trim() || item.label;
-              return (
-                <ChecklistItem
-                  key={item.id}
-                  itemId={item.id}
-                  label={itemLabel}
-                  checked={checked}
-                  isEditing={editingItemId === item.id}
-                  editingLabel={editingLabel}
-                  isCustom={false}
-                  onToggle={onToggleItem}
-                  onStartEdit={onStartEdit}
-                  onCancelEdit={onCancelEdit}
-                  onCommitEdit={onCommitEdit}
-                  setEditingLabel={setEditingLabel}
-                />
-              );
-            })}
-            {customItemsInCategory.map((item) => {
-              const checked = selectedCompleted.includes(item.id);
-              return (
-                <ChecklistItem
-                  key={item.id}
-                  itemId={item.id}
-                  label={item.label}
-                  checked={checked}
-                  isEditing={editingItemId === item.id}
-                  editingLabel={editingLabel}
-                  isCustom
-                  onToggle={onToggleItem}
-                  onStartEdit={onStartEdit}
-                  onCancelEdit={onCancelEdit}
-                  onCommitEdit={onCommitEdit}
-                  setEditingLabel={setEditingLabel}
-                  onRemove={onRemoveCustom}
-                />
-              );
-            })}
-          </div>
+      <div className="space-y-1 mb-3">
+        <div className="flex items-baseline justify-between">
+          <p className="text-xs text-gray-500 dark:text-gray-400">Completion</p>
+          <p className="text-xs font-semibold text-gray-900 dark:text-white">{pct}%</p>
         </div>
+        <div className="h-2 w-full rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-300 ${
+              pct === 100
+                ? 'bg-green-500'
+                : 'bg-gradient-to-r from-sky-400 via-indigo-500 to-emerald-400'
+            }`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <div className="flex justify-between text-[11px] text-gray-500 dark:text-gray-400">
+          <span>
+            Done: <span className="font-semibold text-gray-700 dark:text-gray-200">{completedCount}</span>
+          </span>
+          <span>
+            Remaining: <span className="font-semibold text-gray-700 dark:text-gray-200">{totalCount - completedCount}</span>
+          </span>
+        </div>
+      </div>
+
+      {totalCount > 0 && (
+        <div className="flex justify-end mb-2">
+          <button
+            type="button"
+            onClick={() => onToggleCategoryAll(category.id)}
+            className="text-xs font-medium text-sky-500 hover:text-sky-400 transition-colors"
+          >
+            {allChecked ? 'Uncheck all' : 'Check all'}
+          </button>
+        </div>
+      )}
+
+      <div className="border-t border-gray-100 dark:border-gray-700 pt-2 space-y-1.5">
+        {category.items.map((item) => {
+          const checked = selectedCompleted.includes(item.id);
+          const itemLabel = labelOverrides[item.id]?.trim() || item.label;
+          return (
+            <ChecklistItem
+              key={item.id}
+              itemId={item.id}
+              label={itemLabel}
+              checked={checked}
+              isEditing={editingItemId === item.id}
+              editingLabel={editingLabel}
+              isCustom={false}
+              onToggle={onToggleItem}
+              onStartEdit={onStartEdit}
+              onCancelEdit={onCancelEdit}
+              onCommitEdit={onCommitEdit}
+              setEditingLabel={setEditingLabel}
+            />
+          );
+        })}
+        {customItemsInCategory.map((item) => {
+          const checked = selectedCompleted.includes(item.id);
+          return (
+            <ChecklistItem
+              key={item.id}
+              itemId={item.id}
+              label={item.label}
+              checked={checked}
+              isEditing={editingItemId === item.id}
+              editingLabel={editingLabel}
+              isCustom
+              onToggle={onToggleItem}
+              onStartEdit={onStartEdit}
+              onCancelEdit={onCancelEdit}
+              onCommitEdit={onCommitEdit}
+              setEditingLabel={setEditingLabel}
+              onRemove={onRemoveCustom}
+            />
+          );
+        })}
+        {totalCount === 0 && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 py-4 text-center">
+            No items in this category yet.
+          </p>
+        )}
       </div>
     </div>
   );

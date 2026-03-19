@@ -33,7 +33,7 @@ export default defineConfig(({ command }) => ({
     strictPort: true,
     open: false,
     headers: {
-      'Content-Security-Policy': "default-src 'self'; script-src 'self' https://s3.tradingview.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss: https://query1.finance.yahoo.com https://query2.finance.yahoo.com https://finnhub.io https://api.massive.com https://corsproxy.io https://thingproxy.freeboard.io https://cors-anywhere.herokuapp.com; frame-src https://www.tradingview.com https://s.tradingview.com; object-src 'none'; base-uri 'self'; form-action 'self';",
+      'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://s3.tradingview.com https://www.tradingview.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss: blob: https://query1.finance.yahoo.com https://query2.finance.yahoo.com https://finnhub.io https://api.massive.com https://corsproxy.io https://thingproxy.freeboard.io https://cors-anywhere.herokuapp.com https://*.tradingview.com https://cdn.jsdelivr.net; frame-src https://www.tradingview.com https://s.tradingview.com https://s3.tradingview.com https://www.tradingview-widget.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self';",
       'Referrer-Policy': 'strict-origin-when-cross-origin',
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'DENY',
@@ -60,7 +60,10 @@ export default defineConfig(({ command }) => ({
         rewrite: (path) => {
           const match = path.match(/^\/api\/quote\/([^?]+)(\?.*)?$/);
           if (match) {
-            const symbol = match[1];
+            const rawSymbol = match[1];
+            const decodedSymbol = decodeURIComponent(rawSymbol);
+            // Normalize exchange-form symbols (e.g. NQH27:CME) to Yahoo format (NQH27.CME)
+            const normalizedSymbol = decodedSymbol.replace(/:/g, '.');
             const queryParams = new URLSearchParams(match[2]?.substring(1) || '');
             const period = queryParams.get('period') || '1d';
             const periodMap = {
@@ -73,7 +76,7 @@ export default defineConfig(({ command }) => ({
               '1y': { range: '1y', interval: '1wk' },
             };
             const { range, interval } = periodMap[period] || periodMap['1d'];
-            return `/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`;
+            return `/v8/finance/chart/${encodeURIComponent(normalizedSymbol)}?interval=${interval}&range=${range}`;
           }
           return path;
         },

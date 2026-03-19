@@ -49,7 +49,7 @@ app.use(cors(corsOptions));
 
 const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many authentication attempts. Please try again later.' },
@@ -57,13 +57,13 @@ const authRateLimiter = rateLimit({
 
 const apiRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 1000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests. Please try again later.' },
 });
 
-app.use(express.json({ limit: '10kb' }));
+app.use(express.json({ limit: '1mb' }));
 app.use('/api', apiRateLimiter);
 app.use('/api/auth/login', authRateLimiter);
 app.use('/api/auth/register', authRateLimiter);
