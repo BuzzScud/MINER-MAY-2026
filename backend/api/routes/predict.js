@@ -151,12 +151,12 @@ async function fetchFirstYearlyCandle(ticker, assetType) {
   }
 
   const isBullish = firstCandle.close > firstCandle.open;
-  const fibHigh = isBullish ? firstCandle.high : firstCandle.low;
-  const fibLow = isBullish ? firstCandle.low : firstCandle.high;
+  const fibHigh = Math.max(Number(firstCandle.high), Number(firstCandle.low));
+  const fibLow = Math.min(Number(firstCandle.high), Number(firstCandle.low));
 
   return {
-    fibHigh: Number(fibHigh),
-    fibLow: Number(fibLow),
+    fibHigh,
+    fibLow,
     isBullish,
     anchorDate: firstCandle.date,
   };
@@ -222,7 +222,7 @@ async function fetchHistoricalFromYahoo(ticker, assetType, interval = '1h') {
   return series;
 }
 
-function predictWithCrystalline(series, horizonDays, barsPerDay = TRADING_HOURS_PER_DAY, fibAnchor) {
+function predictWithCrystalline(series, horizonDays, barsPerDay = TRADING_HOURS_PER_DAY, fibAnchor, assetType = 'stock') {
   const n = series.length;
   const closes = series.map((s) => s.close);
   const highs = series.map((s) => s.high);
@@ -263,7 +263,8 @@ function predictWithCrystalline(series, horizonDays, barsPerDay = TRADING_HOURS_
       .reduce((a, b) => a + b * b, 0) / Math.max(1, n - half),
   );
   const volDiff = std2 - std1;
-  const volScore = volDiff < -2 ? 1 : volDiff > 2 ? -1 : 0;
+  const volDiffPct = meanAll > 0 ? (volDiff / meanAll) * 100 : 0;
+  const volScore = volDiffPct < -2.5 ? 1 : volDiffPct > 2.5 ? -1 : 0;
 
   const riskRatio = meanAll ? stdAll / meanAll : 0.1;
   const riskScore = riskRatio < 0.05 ? 1 : riskRatio > 0.15 ? -1 : 0;
@@ -324,15 +325,17 @@ function predictWithCrystalline(series, horizonDays, barsPerDay = TRADING_HOURS_
   // Discount zone: price below the 50% equilibrium — matches fibonacci.py in_discount_zone
   const inDiscount = currentPrice <= eq50;
   // OTE zone: price near the 0.618 or 0.786 retracement (lower portion of range)
-  // Matches fibonacci.py price_in_ote_zone with 2% tolerance
-  const inOte =
-    Math.abs(currentPrice - fibLevels[0.618]) < 0.02 * span ||
-    Math.abs(currentPrice - fibLevels[0.786]) < 0.02 * span;
+  // Matches fibonacci.py price_in_ote_zone: abs(price - level) / abs(level) <= 2%
+  const FIB_TOLERANCE = 0.02;
+  const nearLevel = (price, level) =>
+    Math.abs(level) > 1e-12
+      ? Math.abs(price - level) / Math.abs(level) <= FIB_TOLERANCE
+      : Math.abs(price - level) <= FIB_TOLERANCE * Math.abs(swingHigh);
+  const inOte = nearLevel(currentPrice, fibLevels[0.618]) || nearLevel(currentPrice, fibLevels[0.786]);
   const fibBullConfluence = inDiscount || inOte;
   // Bear confluence: in premium zone or near 0.382 retracement (upper portion)
   const fibBearConfluence =
-    currentPrice >= eq50 ||
-    Math.abs(currentPrice - fibLevels[0.382]) < 0.02 * span;
+    currentPrice >= eq50 || nearLevel(currentPrice, fibLevels[0.382]);
 
   const returns = [];
   for (let i = 1; i < n; i += 1) {
@@ -404,16 +407,16 @@ function predictWithCrystalline(series, horizonDays, barsPerDay = TRADING_HOURS_
   const lowerBand = center.map((c, idx) => c - bandWidth * Math.sqrt(t[idx]));
 
   const lastDate = series[n - 1].date;
+  const isCrypto = assetType === 'crypto';
   const predictedDates = [];
   {
     let cursor = new Date(lastDate.getTime());
     let added = 0;
     while (added < horizonDays) {
       cursor.setDate(cursor.getDate() + 1);
-      const day = cursor.getDay();
-      if (day === 0 || day === 6) {
-        // Skip weekends
-        continue;
+      if (!isCrypto) {
+        const day = cursor.getDay();
+        if (day === 0 || day === 6) continue;
       }
       predictedDates.push(formatDateEST(cursor));
       added += 1;
@@ -446,11 +449,8 @@ function predictWithCrystalline(series, horizonDays, barsPerDay = TRADING_HOURS_
 
   const volatilityAnnual = volAnnual;
 
-  // First target: the nearest yearly fib anchor in the direction of the signal.
-  // Bullish → fibHigh (ratio 1.0) is the first level price must reclaim.
-  // Bearish → fibLow (ratio 0.0) is the first support price must defend.
-  const firstTarget = crystallineScore >= 0 ? fibHigh : fibLow;
-  const firstTargetPct = (firstTarget - currentPrice) / currentPrice;
+  const firstTarget = predictedPrice;
+  const firstTargetPct = pctChange;
 
   return {
     current_price: currentPrice,
@@ -518,7 +518,7 @@ router.post('/', async (req, res) => {
     const historicalDates = chartSeries.map((s) => formatDatetimeEST(s.date));
     const historicalPrices = chartSeries.map((s) => Number(s.close.toFixed(4)));
 
-    const out = predictWithCrystalline(series, horizonDays, barsPerDay, yearlyAnchor);
+    const out = predictWithCrystalline(series, horizonDays, barsPerDay, yearlyAnchor, assetType);
     out.current_price = closes[closes.length - 1];
     out.historical_dates = historicalDates;
     out.historical_prices = historicalPrices;

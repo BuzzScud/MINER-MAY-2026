@@ -23,32 +23,32 @@ function EconomicCalendar() {
   }, []);
 
   return (
-    <div className="w-full max-w-[1800px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden">
-      <nav className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4 flex-shrink-0">
+    <div className="w-full max-w-[1400px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden">
+      <nav className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-4 flex-shrink-0">
         <Link to="/" className="hover:text-sky-400 dark:hover:text-sky-300 transition-colors">Dashboard</Link>
         <span>/</span>
         <span className="font-medium text-gray-900 dark:text-white">Calendar</span>
       </nav>
-      <div className="text-center mb-6 flex-shrink-0">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center justify-center gap-2">
+      <div className="text-center mb-4 flex-shrink-0">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white flex items-center justify-center gap-2">
           <svg className="w-6 h-6 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
           Economic Calendar
         </h1>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           Track key economic events, announcements, and news from around the world
         </p>
       </div>
 
       {/* Info Banner */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4 flex-shrink-0">
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2.5 mb-4 flex-shrink-0">
         <div className="flex items-start gap-2">
           <svg className="w-5 h-5 text-sky-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div>
-            <p className="text-sm text-blue-800 dark:text-blue-300 font-medium">
+            <p className="text-xs text-blue-800 dark:text-blue-300 font-medium">
               Stay ahead of market-moving events
             </p>
             <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">
@@ -60,29 +60,29 @@ function EconomicCalendar() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 flex-shrink-0">
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
               <span className="text-red-600 dark:text-red-400 text-xs font-bold">!</span>
             </div>
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">High Impact</p>
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">Fed, ECB, NFP</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">High Impact</p>
+              <p className="text-lg font-bold text-gray-900 dark:text-white">Fed, ECB, NFP</p>
             </div>
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
               <span className="text-orange-600 dark:text-orange-400 text-xs font-bold">M</span>
             </div>
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Medium Impact</p>
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">GDP, CPI</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Medium Impact</p>
+              <p className="text-lg font-bold text-gray-900 dark:text-white">GDP, CPI</p>
             </div>
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
               <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,12 +90,12 @@ function EconomicCalendar() {
               </svg>
             </div>
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Countries</p>
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">20+ Markets</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Countries</p>
+              <p className="text-lg font-bold text-gray-900 dark:text-white">20+ Markets</p>
             </div>
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
               <svg className="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,8 +103,8 @@ function EconomicCalendar() {
               </svg>
             </div>
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Updates</p>
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">Real-time</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Updates</p>
+              <p className="text-lg font-bold text-gray-900 dark:text-white">Real-time</p>
             </div>
           </div>
         </div>
@@ -112,8 +112,8 @@ function EconomicCalendar() {
 
       {/* Calendar Widget Container */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex-1 min-h-0 flex flex-col">
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-between flex-shrink-0">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-400 flex items-center gap-2">
+        <div className="px-3 py-2.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-between flex-shrink-0">
+          <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-2">
             <svg className="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
@@ -150,7 +150,7 @@ function EconomicCalendar() {
           href="https://www.tradingview.com/economic-calendar/" 
           rel="noopener noreferrer" 
           target="_blank"
-          className="text-xs text-black dark:text-gray-400 hover:text-sky-400 transition-colors"
+          className="text-xs text-gray-500 dark:text-gray-400 hover:text-sky-400 transition-colors"
         >
           Economic Calendar by TradingView
         </a>

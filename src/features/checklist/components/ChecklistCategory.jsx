@@ -43,7 +43,7 @@ export function ChecklistCategory({
       <button
         type="button"
         onClick={onToggleExpand}
-        className="w-full flex items-center gap-2 p-4 text-left focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-inset rounded-t-lg"
+        className="w-full flex items-center gap-2 px-3 py-2.5 text-left focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-inset rounded-t-lg"
       >
         <span className="text-gray-500 dark:text-gray-400 shrink-0" aria-hidden>
           {isExpanded ? (
@@ -70,13 +70,13 @@ export function ChecklistCategory({
               }}
               onClick={(e) => e.stopPropagation()}
               maxLength={100}
-              className="block w-full px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+              className="block w-full px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
               autoFocus
               aria-label="Edit category title"
             />
           ) : (
             <>
-              <p className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-200 truncate">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-200 truncate">
                 {displayLabel}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
@@ -114,7 +114,7 @@ export function ChecklistCategory({
                   e.stopPropagation();
                   onDeleteCategory(category.id);
                 }}
-                className="p-1.5 rounded text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs font-medium"
+                className="p-1.5 rounded text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs font-semibold"
                 aria-label="Delete category"
               >
                 Delete
@@ -130,13 +130,13 @@ export function ChecklistCategory({
         }`}
       >
         <div className="min-h-0 overflow-hidden">
-          <div className="border-t border-gray-200 dark:border-gray-700 p-4 pt-3 space-y-2">
+          <div className="border-t border-gray-200 dark:border-gray-700 px-3 py-2.5 space-y-2">
             <div className="flex justify-between items-center mb-1">
               {totalCount > 0 && (
                 <button
                   type="button"
                   onClick={() => onToggleCategoryAll(category.id)}
-                  className="text-[11px] font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
                 >
                   {allChecked ? 'Uncheck all' : 'Check all'}
                 </button>

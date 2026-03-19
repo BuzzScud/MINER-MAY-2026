@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   ComposedChart,
   XAxis,
@@ -246,40 +246,20 @@ function SavedProjectionChart({ chartData, hasChart, fibLevelsDict, phiExtension
     const bullish = Number(row.bullish);
     const bearish = Number(row.bearish);
     if (Number.isFinite(bullish) && bullish >= yMin && bullish <= yMax) {
-      allRefLines.push({
-        key: `phi-b-${ratio}`,
-        price: bullish,
-        stroke: '#22c55e',
-        dash: '3 3',
-        width: 1,
-        opacity: 0.5,
-        label: `${tag} ↑`,
-        labelFill: '#22c55e',
-        priority: 0,
-      });
+      allRefLines.push({ key: `phi-b-${ratio}`, price: bullish, stroke: '#22c55e', dash: '3 3', width: 1, opacity: 0.5, label: `${tag} ↑`, labelFill: '#22c55e', priority: 0 });
     }
     if (Number.isFinite(bearish) && bearish >= yMin && bearish <= yMax) {
-      allRefLines.push({
-        key: `phi-r-${ratio}`,
-        price: bearish,
-        stroke: '#ef4444',
-        dash: '3 3',
-        width: 1,
-        opacity: 0.5,
-        label: `${tag} ↓`,
-        labelFill: '#ef4444',
-        priority: 0,
-      });
+      allRefLines.push({ key: `phi-r-${ratio}`, price: bearish, stroke: '#ef4444', dash: '3 3', width: 1, opacity: 0.5, label: `${tag} ↓`, labelFill: '#ef4444', priority: 0 });
     }
   }
 
   const visibleRefLines = dedupeRefLabels(allRefLines, labelMinGap);
 
   return (
-    <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 mb-6 flex-shrink-0">
+    <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 mb-6 flex-shrink-0" aria-label="Saved projection chart">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-          Historical & forecast
+        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          Historical & Forecast
         </h2>
         <div className="flex items-center gap-3">
           {isZoomed && (
@@ -294,9 +274,7 @@ function SavedProjectionChart({ chartData, hasChart, fibLevelsDict, phiExtension
           <span className="text-[10px] text-gray-400 dark:text-gray-500 hidden sm:inline">
             Scroll to zoom · Shift+scroll to pan
           </span>
-          <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-            {ticker || '—'}
-          </span>
+          <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">{ticker || '—'}</span>
         </div>
       </div>
       <div className="h-80" ref={chartContainerRef}>
@@ -311,114 +289,27 @@ function SavedProjectionChart({ chartData, hasChart, fibLevelsDict, phiExtension
                 </linearGradient>
               </defs>
               <CartesianGrid vertical={false} stroke="rgba(0,0,0,0.05)" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 10, fill: '#9ca3af' }}
-                axisLine={false}
-                tickLine={false}
-                minTickGap={60}
-                tickFormatter={shortenDateLabel}
-              />
-              <YAxis
-                domain={[yMin, yMax]}
-                allowDataOverflow
-                tick={{ fontSize: 10, fill: '#9ca3af' }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v) =>
-                  v != null && Number.isFinite(v) ? `$${v.toFixed(2)}` : ''
-                }
-                width={72}
-              />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} minTickGap={60} tickFormatter={shortenDateLabel} />
+              <YAxis domain={[yMin, yMax]} allowDataOverflow tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={(v) => v != null && Number.isFinite(v) ? `$${v.toFixed(2)}` : ''} width={72} />
               <RechartsTooltip
-                contentStyle={{
-                  backgroundColor: 'rgba(0,0,0,0.85)',
-                  border: 'none',
-                  borderRadius: 8,
-                  padding: '10px 14px',
-                  fontSize: 12,
-                }}
+                contentStyle={{ backgroundColor: 'rgba(0,0,0,0.85)', border: 'none', borderRadius: 8, padding: '10px 14px', fontSize: 12 }}
                 itemStyle={{ color: '#fff' }}
                 labelStyle={{ color: '#9ca3af', fontWeight: 600, marginBottom: 4 }}
                 formatter={(v, name) => {
                   if (v == null) return [null, null];
-                  const label =
-                    name === 'historical'
-                      ? 'Price'
-                      : name === 'predicted'
-                        ? 'Forecast'
-                        : name === 'upperClamped'
-                          ? 'Upper band'
-                          : name === 'lowerClamped'
-                            ? 'Lower band'
-                            : name;
+                  const label = name === 'historical' ? 'Price' : name === 'predicted' ? 'Forecast' : name === 'upperClamped' ? 'Upper band' : name === 'lowerClamped' ? 'Lower band' : name;
                   return [formatCurrency(v), label];
                 }}
                 labelFormatter={(label) => label}
               />
               {visibleRefLines.map((line) => (
-                <ReferenceLine
-                  key={line.key}
-                  y={line.price}
-                  stroke={line.stroke}
-                  strokeDasharray={line.dash}
-                  strokeWidth={line.width}
-                  strokeOpacity={line.opacity}
-                  label={{
-                    value: line.label,
-                    position: 'right',
-                    fontSize: 8,
-                    fill: line.labelFill,
-                  }}
-                />
+                <ReferenceLine key={line.key} y={line.price} stroke={line.stroke} strokeDasharray={line.dash} strokeWidth={line.width} strokeOpacity={line.opacity} label={{ value: line.label, position: 'right', fontSize: 8, fill: line.labelFill }} />
               ))}
-              <Area
-                type="monotone"
-                dataKey="upperClamped"
-                stroke="transparent"
-                fill="rgba(251, 191, 36, 0.08)"
-                activeDot={false}
-                dot={false}
-                isAnimationActive={false}
-              />
-              <Area
-                type="monotone"
-                dataKey="lowerClamped"
-                stroke="transparent"
-                fill="rgba(251, 191, 36, 0.08)"
-                activeDot={false}
-                dot={false}
-                isAnimationActive={false}
-              />
-              <Area
-                type="monotone"
-                dataKey="historical"
-                stroke={histColor}
-                strokeWidth={2}
-                fill="url(#savedHistGrad)"
-                dot={false}
-                activeDot={{ r: 4, strokeWidth: 0, fill: histColor }}
-                isAnimationActive={false}
-              />
-              <Area
-                type="monotone"
-                dataKey="predicted"
-                stroke="#f97316"
-                strokeWidth={2.5}
-                strokeDasharray="6 4"
-                fill="transparent"
-                dot={false}
-                activeDot={{ r: 4, strokeWidth: 0, fill: '#f97316' }}
-                isAnimationActive={false}
-              />
-              <Brush
-                dataKey="date"
-                height={10}
-                stroke="#6366f1"
-                fill="rgba(99,102,241,0.03)"
-                tickFormatter={shortenDateLabel}
-                travellerWidth={6}
-              />
+              <Area type="monotone" dataKey="upperClamped" stroke="transparent" fill="rgba(251, 191, 36, 0.08)" activeDot={false} dot={false} isAnimationActive={false} />
+              <Area type="monotone" dataKey="lowerClamped" stroke="transparent" fill="rgba(251, 191, 36, 0.08)" activeDot={false} dot={false} isAnimationActive={false} />
+              <Area type="monotone" dataKey="historical" stroke={histColor} strokeWidth={2} fill="url(#savedHistGrad)" dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: histColor }} isAnimationActive={false} />
+              <Area type="monotone" dataKey="predicted" stroke="#f97316" strokeWidth={2.5} strokeDasharray="6 4" fill="transparent" dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: '#f97316' }} isAnimationActive={false} />
+              <Brush dataKey="date" height={10} stroke="#6366f1" fill="rgba(99,102,241,0.03)" tickFormatter={shortenDateLabel} travellerWidth={6} />
             </ComposedChart>
           </ResponsiveContainer>
         ) : (
@@ -436,20 +327,10 @@ function SavedProjectionChart({ chartData, hasChart, fibLevelsDict, phiExtension
   );
 }
 
-/**
- * @param {{
- *   projection: Record<string, unknown>,
- *   savedDateLabel: string,
- *   onBack: () => void,
- *   onDelete: () => void,
- * }} props
- */
 function ReadOnlyProjectionViewer({ projection, savedDateLabel, onBack, onDelete }) {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
   const ticker = String(projection.ticker || '').toUpperCase();
 
-  // Derive direction from the actual stored prices, not from percentToTarget or direction field.
   const savedCurrent = Number(projection.currentPrice);
   const savedTarget = Number(projection.firstTargetPrice);
   const directionUp =
@@ -457,7 +338,6 @@ function ReadOnlyProjectionViewer({ projection, savedDateLabel, onBack, onDelete
       ? savedTarget >= savedCurrent
       : Number(projection.percentToTarget) >= 0;
 
-  // Recompute percent-to-target from stored prices for display accuracy
   const displayPctToTarget =
     Number.isFinite(savedCurrent) && savedCurrent !== 0 && Number.isFinite(savedTarget)
       ? (savedTarget - savedCurrent) / savedCurrent
@@ -466,16 +346,13 @@ function ReadOnlyProjectionViewer({ projection, savedDateLabel, onBack, onDelete
   const handleLoadAsNew = () => {
     try {
       if (ticker) sessionStorage.setItem(PROJECTION_LOAD_AS_NEW_KEY, ticker);
-    } catch {
-      /* ignore */
-    }
-    navigate({ pathname, search: '?tab=projection' });
+    } catch { /* ignore */ }
+    navigate('/projection');
   };
 
   const keyPhiTargets = Array.isArray(projection.keyPhiTargets) ? projection.keyPhiTargets : [];
   const phiExtensionTable = Array.isArray(projection.phiExtensionTable) ? projection.phiExtensionTable : [];
 
-  // Rebuild chart data from stored arrays
   const chartData = buildChartData(
     projection.chartHistoricalDates,
     projection.chartHistoricalPrices,
@@ -492,111 +369,107 @@ function ReadOnlyProjectionViewer({ projection, savedDateLabel, onBack, onDelete
       : null;
 
   return (
-    <div className="w-full max-w-[1800px] mx-auto px-0 flex flex-col h-full min-h-0 overflow-hidden">
-      {/* Top banner */}
-      <div className="rounded-lg bg-sky-500 dark:bg-sky-600 text-white px-4 py-3 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-shrink-0">
-        <p className="text-sm font-medium">
-          Viewing saved projection from {savedDateLabel}
-          {projection.name ? (
-            <span className="block text-sky-100 text-xs font-normal mt-0.5">
-              {String(projection.name)}
-            </span>
-          ) : null}
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={onBack}
-            className="rounded-lg bg-white/20 hover:bg-white/30 px-3 py-2 text-sm font-semibold"
-          >
-            Back to list
-          </button>
-          <button
-            type="button"
-            onClick={handleLoadAsNew}
-            className="rounded-lg bg-white text-sky-700 hover:bg-sky-50 px-3 py-2 text-sm font-semibold"
-          >
-            Load as new
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="rounded-lg bg-red-600 hover:bg-red-700 text-white px-3 py-2 text-sm font-semibold"
-          >
-            Delete
-          </button>
+    <div className="w-full max-w-[1800px] mx-auto px-0 flex flex-col h-full min-h-0 overflow-y-auto">
+
+      {/* ─── Action bar ─── */}
+      <div className="flex flex-wrap items-center gap-2 mb-6 flex-shrink-0 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-1 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          ← Back
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+            {projection.name || ticker || 'Saved Projection'}
+          </p>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+            Saved {savedDateLabel} · {ticker}
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={handleLoadAsNew}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold py-2 px-4 transition-colors whitespace-nowrap"
+        >
+          Run New
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold py-2 px-4 transition-colors whitespace-nowrap"
+        >
+          Delete
+        </button>
       </div>
 
-      {/* Metric cards */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4 flex-shrink-0">
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 p-4">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
-            Current
+      {/* ─── Stat cards ─── */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6 flex-shrink-0">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+            Current Price
           </p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums">
+          <p className="text-xl font-bold text-gray-900 dark:text-white tabular-nums">
             {formatCurrency(projection.currentPrice)}
           </p>
         </div>
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 p-4">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
             1st Target
           </p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums">
+          <p className="text-xl font-bold text-gray-900 dark:text-white tabular-nums">
             {formatCurrency(projection.firstTargetPrice)}
           </p>
           <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
             {directionUp ? 'Swing High' : 'Swing Low'}
           </p>
         </div>
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 p-4">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
             To 1st Target
           </p>
-          <p
-            className={`text-2xl font-bold tabular-nums flex items-center gap-1.5 ${
-              directionUp ? 'text-emerald-500' : 'text-red-500'
-            }`}
-          >
-            <span className="text-lg">{directionUp ? '↑' : '↓'}</span>
+          <p className={`text-xl font-bold tabular-nums flex items-center gap-1.5 ${directionUp ? 'text-emerald-500' : 'text-red-500'}`}>
+            <span className="text-base">{directionUp ? '↑' : '↓'}</span>
             <span>{formatPercentFromFraction(displayPctToTarget)}</span>
           </p>
         </div>
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 p-4">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
             Confidence
           </p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums mb-2">
+          <p className="text-xl font-bold text-gray-900 dark:text-white tabular-nums mb-1.5">
             {projection.confidence != null ? `${projection.confidence}%` : '—'}
           </p>
           <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
             <div
               className="h-full rounded-full bg-emerald-400 transition-all duration-700"
-              style={{
-                width:
-                  projection.confidence != null
-                    ? `${Math.min(100, Number(projection.confidence))}%`
-                    : '0%',
-              }}
+              style={{ width: projection.confidence != null ? `${Math.min(100, Number(projection.confidence))}%` : '0%' }}
             />
           </div>
         </div>
       </section>
 
-      {/* Key Phi Targets */}
+      {/* ─── Chart ─── */}
+      <SavedProjectionChart
+        chartData={chartData}
+        hasChart={hasChart}
+        fibLevelsDict={fibLevelsDict}
+        phiExtensionLevels={phiExtensionTable}
+        ticker={ticker}
+        directionUp={directionUp}
+      />
+
+      {/* ─── Key Price Targets ─── */}
       {keyPhiTargets.length > 0 && (
-        <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 mb-4 flex-shrink-0">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
+        <section className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 mb-6 flex-shrink-0">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
             Key Price Targets — 1H Phi Extensions
           </p>
           <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
             {keyPhiTargets.map((row, idx) => {
               const label = row.label != null ? String(row.label) : `Target ${idx}`;
-              const isAnchor =
-                label === 'Swing Low' ||
-                label === 'Swing High' ||
-                label.includes('Swing Low') ||
-                label.includes('Swing High');
+              const isAnchor = label.includes('Swing');
               return (
                 <div
                   key={`${label}-${idx}`}
@@ -606,13 +479,7 @@ function ReadOnlyProjectionViewer({ projection, savedDateLabel, onBack, onDelete
                       : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60'
                   }`}
                 >
-                  <span
-                    className={`text-[10px] font-semibold uppercase tracking-wider ${
-                      isAnchor
-                        ? 'text-sky-500 dark:text-sky-400'
-                        : 'text-gray-400 dark:text-gray-500'
-                    }`}
-                  >
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider ${isAnchor ? 'text-sky-500 dark:text-sky-400' : 'text-gray-400 dark:text-gray-500'}`}>
                     {label}
                   </span>
                   <span className="text-sm font-bold text-emerald-500 tabular-nums font-mono">
@@ -625,287 +492,187 @@ function ReadOnlyProjectionViewer({ projection, savedDateLabel, onBack, onDelete
               );
             })}
           </div>
-          <p className="text-[10px] text-gray-400 dark:text-gray-600 mt-2">
-            Swing Low (0.0) and Swing High (1.0) are OHLC anchors · Green = bullish · Red = bearish
-          </p>
         </section>
       )}
 
-      <SavedProjectionChart
-        chartData={chartData}
-        hasChart={hasChart}
-        fibLevelsDict={fibLevelsDict}
-        phiExtensionLevels={phiExtensionTable}
-        ticker={ticker}
-        directionUp={directionUp}
-      />
+      {/* ─── Details: Model metrics + Phi table ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4 flex-shrink-0">
 
-      {/* Summary + Phi extension table */}
-      <div className="flex-1 min-h-0 overflow-hidden">
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 w-full h-full flex flex-col gap-4 overflow-y-auto">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex-shrink-0">
-            Summary
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs flex-1 min-h-0">
-            {/* Left column */}
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/80 p-3 flex flex-col gap-3 overflow-y-auto">
-              {/* Crystalline Score */}
-              <div>
-                <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
-                  Crystalline Score
-                </p>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-base font-bold text-gray-900 dark:text-white tabular-nums">
-                    {projection.crystallineScore ?? '—'}
-                  </span>
-                  <span className="text-[11px] text-gray-500 dark:text-gray-400">
-                    (range −4 to +4)
-                  </span>
-                </div>
-                <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden mb-1">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width:
-                        projection.crystallineScore != null
-                          ? `${Math.max(
-                              0,
-                              Math.min(
-                                100,
-                                ((Number(projection.crystallineScore) + 4) / 8) * 100,
-                              ),
-                            )}%`
-                          : '50%',
-                      background:
-                        projection.crystallineScore != null &&
-                        Number(projection.crystallineScore) < 0
-                          ? '#ef4444'
-                          : '#22c55e',
-                    }}
-                  />
-                </div>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                  Trend:{' '}
-                  <span className="text-gray-800 dark:text-gray-200">
-                    {projection.crystallineTrend ?? '—'}
-                  </span>
-                  {' · Vol: '}
-                  <span className="text-gray-800 dark:text-gray-200">
-                    {projection.crystallineVol ?? '—'}
-                  </span>
-                  {' · Risk: '}
-                  <span className="text-gray-800 dark:text-gray-200">
-                    {projection.crystallineRisk ?? '—'}
-                  </span>
-                </p>
-              </div>
+        {/* Left — Model metrics */}
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 flex flex-col gap-4 text-xs">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            Model Summary
+          </h3>
 
-              <div className="border-t border-gray-200 dark:border-gray-700" />
-
-              {/* Clock Lattice */}
-              <div>
-                <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
-                  Clock Lattice
-                </p>
-                <div className="flex flex-col gap-0.5">
-                  <span>
-                    Position:{' '}
-                    <strong className="tabular-nums text-gray-900 dark:text-white">
-                      {projection.clockLatticePosition ?? '—'}
-                    </strong>{' '}
-                    / 11
-                  </span>
-                  {projection.onPrime != null ? (
-                    <span className="text-gray-500 dark:text-gray-400">
-                      {projection.onPrime
-                        ? 'Prime-aligned (3, 6, 9)'
-                        : 'Not prime-aligned'}
-                    </span>
-                  ) : null}
-                  {projection.piPhiResonance != null ? (
-                    <span className="text-gray-500 dark:text-gray-400">
-                      {projection.piPhiResonance
-                        ? 'π×φ resonance active'
-                        : 'No π×φ resonance'}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-
-              <div className="border-t border-gray-200 dark:border-gray-700" />
-
-              {/* Fibonacci Levels */}
-              <div>
-                <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
-                  Fibonacci Levels
-                </p>
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1">
-                  Anchor: {projection.fibAnchorDate || '—'} ·{' '}
-                  {projection.fibAnchorBullish == null
-                    ? '—'
-                    : projection.fibAnchorBullish
-                      ? 'Bullish first candle'
-                      : 'Bearish first candle'}
-                </p>
-                <div className="space-y-0.5">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400">Swing High (1.0)</span>
-                    <span className="font-mono tabular-nums text-gray-900 dark:text-white">
-                      {fibLevelsDict?.['1'] != null
-                        ? formatCurrency(fibLevelsDict['1'])
-                        : formatCurrency(projection.swingHigh)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400">0.786 (OTE)</span>
-                    <span className="font-mono tabular-nums text-sky-600 dark:text-sky-400">
-                      {fibLevelsDict?.['0.786'] != null
-                        ? formatCurrency(fibLevelsDict['0.786'])
-                        : '—'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400">0.618 (OTE)</span>
-                    <span className="font-mono tabular-nums text-sky-600 dark:text-sky-400">
-                      {fibLevelsDict?.['0.618'] != null
-                        ? formatCurrency(fibLevelsDict['0.618'])
-                        : '—'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400">0.5 (Eq)</span>
-                    <span className="font-mono tabular-nums text-gray-700 dark:text-gray-300">
-                      {fibLevelsDict?.['0.5'] != null
-                        ? formatCurrency(fibLevelsDict['0.5'])
-                        : '—'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400">0.382</span>
-                    <span className="font-mono tabular-nums text-gray-700 dark:text-gray-300">
-                      {fibLevelsDict?.['0.382'] != null
-                        ? formatCurrency(fibLevelsDict['0.382'])
-                        : '—'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400">Swing Low (0.0)</span>
-                    <span className="font-mono tabular-nums text-gray-900 dark:text-white">
-                      {fibLevelsDict?.['0'] != null
-                        ? formatCurrency(fibLevelsDict['0'])
-                        : formatCurrency(projection.swingLow)}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400 pt-0.5">
-                    Confluence:{' '}
-                    {projection.fibBullConfluence || projection.fibBearConfluence
-                      ? [
-                          projection.fibBullConfluence ? 'Bull' : null,
-                          projection.fibBearConfluence ? 'Bear' : null,
-                        ]
-                          .filter(Boolean)
-                          .join(' & ')
-                      : 'None'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="border-t border-gray-200 dark:border-gray-700" />
-
-              {/* Risk Metrics */}
-              <div>
-                <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
-                  Risk Metrics
-                </p>
-                <div className="flex flex-col gap-0.5">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400">Risk ratio</span>
-                    <span className="font-mono tabular-nums text-gray-900 dark:text-white">
-                      {projection.riskRatio != null
-                        ? Number(projection.riskRatio).toFixed(4)
-                        : '—'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 dark:text-gray-400">Ann. volatility</span>
-                    <span className="font-mono tabular-nums text-gray-900 dark:text-white">
-                      {projection.volatilityAnnual != null
-                        ? `${(Number(projection.volatilityAnnual) * 100).toFixed(2)}%`
-                        : '—'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {projection.summary ? (
-                <>
-                  <div className="border-t border-gray-200 dark:border-gray-700" />
-                  <p className="text-[11px] text-gray-700 dark:text-gray-300 leading-relaxed">
-                    {String(projection.summary)}
-                  </p>
-                </>
-              ) : null}
-
-              {projection.note ? (
-                <>
-                  <div className="border-t border-gray-200 dark:border-gray-700" />
-                  <p className="text-[11px] text-gray-700 dark:text-gray-300 leading-relaxed">
-                    <span className="font-semibold text-gray-500 dark:text-gray-400">Note: </span>
-                    {String(projection.note)}
-                  </p>
-                </>
-              ) : null}
+          {/* Crystalline Score */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Crystalline Score</span>
+              <span className="text-sm font-bold text-gray-900 dark:text-white tabular-nums">
+                {projection.crystallineScore ?? '—'}
+                <span className="text-[10px] font-normal text-gray-400 dark:text-gray-500 ml-1">/&nbsp;±4</span>
+              </span>
             </div>
+            <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden mb-1.5">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: projection.crystallineScore != null
+                    ? `${Math.max(0, Math.min(100, ((Number(projection.crystallineScore) + 4) / 8) * 100))}%`
+                    : '50%',
+                  background: projection.crystallineScore != null && Number(projection.crystallineScore) < 0 ? '#ef4444' : '#22c55e',
+                }}
+              />
+            </div>
+            <div className="flex gap-4 text-[11px] text-gray-500 dark:text-gray-400">
+              <span>Trend: <span className="text-gray-800 dark:text-gray-200 font-medium">{projection.crystallineTrend ?? '—'}</span></span>
+              <span>Vol: <span className="text-gray-800 dark:text-gray-200 font-medium">{projection.crystallineVol ?? '—'}</span></span>
+              <span>Risk: <span className="text-gray-800 dark:text-gray-200 font-medium">{projection.crystallineRisk ?? '—'}</span></span>
+            </div>
+          </div>
 
-            {/* Right column — Phi Extension table */}
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/80 p-3 flex flex-col overflow-y-auto">
-              <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-                Phi Extension Targets
+          <hr className="border-gray-100 dark:border-gray-800" />
+
+          {/* Clock Lattice */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-0.5">Clock Position</p>
+              <p className="text-sm font-bold text-gray-900 dark:text-white tabular-nums">
+                {projection.clockLatticePosition ?? '—'} <span className="text-[10px] font-normal text-gray-400">/ 11</span>
               </p>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-2">
-                Anchor: 0.0 = swing low · 1.0 = swing high
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-0.5">Prime</p>
+              <p className={`text-sm font-semibold ${projection.onPrime ? 'text-emerald-500' : 'text-gray-400 dark:text-gray-500'}`}>
+                {projection.onPrime ? 'Aligned' : 'No'}
               </p>
-              <div className="grid grid-cols-3 gap-x-2 gap-y-0.5 text-[11px] font-mono mb-1 text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 pb-1">
-                <span>Ratio</span>
-                <span className="text-right text-emerald-600 dark:text-emerald-400">↑ Bullish</span>
-                <span className="text-right text-red-500 dark:text-red-400">↓ Bearish</span>
-              </div>
-              <div className="flex-1 overflow-y-auto space-y-0.5">
-                {phiExtensionTable.map((row, rowIdx) => {
-                  const ratio = Number(row.ratio);
-                  const isKey = [0, 1, 1.382, 2.382, 3.382, 4.24, 5.08].includes(ratio);
-                  return (
-                    <div
-                      key={`phi-${rowIdx}-${ratio}`}
-                      className={`grid grid-cols-3 gap-x-2 text-[11px] font-mono rounded px-1 ${
-                        isKey
-                          ? 'bg-sky-50 dark:bg-sky-900/20 text-sky-900 dark:text-sky-100'
-                          : ''
-                      }`}
-                    >
-                      <span className={isKey ? 'font-bold' : 'text-gray-500 dark:text-gray-400'}>
-                        {Number.isFinite(ratio) ? ratio.toFixed(3) : '—'}
-                      </span>
-                      <span className="text-right text-emerald-600 dark:text-emerald-400 tabular-nums">
-                        {formatCurrency(row.bullish)}
-                      </span>
-                      <span className="text-right text-red-500 dark:text-red-400 tabular-nums">
-                        {formatCurrency(row.bearish)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              <p className="text-[10px] text-gray-400 dark:text-gray-600 mt-2 border-t border-gray-200 dark:border-gray-700 pt-1.5">
-                Highlighted rows = key targets (1.382, 2.382, 3.382, 4.24, 5.08)
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-0.5">π×φ Resonance</p>
+              <p className={`text-sm font-semibold ${projection.piPhiResonance ? 'text-emerald-500' : 'text-gray-400 dark:text-gray-500'}`}>
+                {projection.piPhiResonance ? 'Active' : 'No'}
               </p>
             </div>
           </div>
-          <p className="text-[11px] text-gray-500 dark:text-gray-500 mt-2">
-            Not financial advice. For educational and research purposes only.
+
+          <hr className="border-gray-100 dark:border-gray-800" />
+
+          {/* Risk Metrics */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-0.5">Risk Ratio</p>
+              <p className="text-sm font-bold text-gray-900 dark:text-white font-mono tabular-nums">
+                {projection.riskRatio != null ? Number(projection.riskRatio).toFixed(4) : '—'}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-0.5">Ann. Volatility</p>
+              <p className="text-sm font-bold text-gray-900 dark:text-white font-mono tabular-nums">
+                {projection.volatilityAnnual != null ? `${(Number(projection.volatilityAnnual) * 100).toFixed(2)}%` : '—'}
+              </p>
+            </div>
+          </div>
+
+          <hr className="border-gray-100 dark:border-gray-800" />
+
+          {/* Fibonacci Levels */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Fibonacci Levels</span>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                {projection.fibAnchorDate || '—'} · {projection.fibAnchorBullish == null ? '—' : projection.fibAnchorBullish ? 'Bullish' : 'Bearish'} anchor
+              </span>
+            </div>
+            <div className="space-y-1">
+              {[
+                { label: 'Swing High (1.0)', key: '1', fallback: projection.swingHigh, accent: false },
+                { label: '0.786 (OTE)', key: '0.786', fallback: null, accent: true },
+                { label: '0.618 (OTE)', key: '0.618', fallback: null, accent: true },
+                { label: '0.5 (Eq)', key: '0.5', fallback: null, accent: false },
+                { label: '0.382', key: '0.382', fallback: null, accent: false },
+                { label: 'Swing Low (0.0)', key: '0', fallback: projection.swingLow, accent: false },
+              ].map(({ label, key, fallback, accent }) => (
+                <div key={key} className="flex items-center justify-between py-0.5">
+                  <span className="text-gray-500 dark:text-gray-400">{label}</span>
+                  <span className={`font-mono tabular-nums ${accent ? 'text-sky-600 dark:text-sky-400 font-semibold' : 'text-gray-900 dark:text-white'}`}>
+                    {fibLevelsDict?.[key] != null
+                      ? formatCurrency(fibLevelsDict[key])
+                      : fallback != null ? formatCurrency(fallback) : '—'}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5">
+              Confluence: {projection.fibBullConfluence || projection.fibBearConfluence
+                ? [projection.fibBullConfluence ? 'Bull' : null, projection.fibBearConfluence ? 'Bear' : null].filter(Boolean).join(' & ')
+                : 'None'}
+            </p>
+          </div>
+
+          <hr className="border-gray-100 dark:border-gray-800" />
+
+          {/* Summary text */}
+          <p className="text-[11px] text-gray-700 dark:text-gray-300 leading-relaxed">
+            {projection.summary || '—'}
+          </p>
+
+          {projection.note ? (
+            <>
+              <hr className="border-gray-100 dark:border-gray-800" />
+              <p className="text-[11px] text-gray-700 dark:text-gray-300 leading-relaxed">
+                <span className="font-semibold text-gray-500 dark:text-gray-400">Note: </span>
+                {String(projection.note)}
+              </p>
+            </>
+          ) : null}
+        </div>
+
+        {/* Right — Phi Extension Targets */}
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 flex flex-col text-xs">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
+            Phi Extension Targets
+          </h3>
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-3">
+            0.0 = swing low · 1.0 = swing high
+          </p>
+          <div className="grid grid-cols-3 gap-x-3 text-[11px] font-mono text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 pb-1.5 mb-1">
+            <span className="font-semibold">Ratio</span>
+            <span className="text-right font-semibold text-emerald-600 dark:text-emerald-400">↑ Bullish</span>
+            <span className="text-right font-semibold text-red-500 dark:text-red-400">↓ Bearish</span>
+          </div>
+          <div className="flex-1 space-y-0.5 overflow-y-auto">
+            {phiExtensionTable.map((row, rowIdx) => {
+              const ratio = Number(row.ratio);
+              const isKey = [0, 1, 1.382, 2.382, 3.382, 4.24, 5.08].includes(ratio);
+              return (
+                <div
+                  key={`phi-${rowIdx}-${ratio}`}
+                  className={`grid grid-cols-3 gap-x-3 text-[11px] font-mono rounded px-1.5 py-0.5 ${
+                    isKey ? 'bg-sky-50 dark:bg-sky-900/20 text-sky-900 dark:text-sky-100' : ''
+                  }`}
+                >
+                  <span className={isKey ? 'font-bold' : 'text-gray-500 dark:text-gray-400'}>
+                    {Number.isFinite(ratio) ? ratio.toFixed(3) : '—'}
+                  </span>
+                  <span className="text-right text-emerald-600 dark:text-emerald-400 tabular-nums">
+                    {formatCurrency(row.bullish)}
+                  </span>
+                  <span className="text-right text-red-500 dark:text-red-400 tabular-nums">
+                    {formatCurrency(row.bearish)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-3 border-t border-gray-200 dark:border-gray-700 pt-2">
+            Highlighted rows = key targets (1.382, 2.382, 3.382, 4.24, 5.08)
           </p>
         </div>
       </div>
+
+      <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center pb-4 flex-shrink-0">
+        Not financial advice. For educational and research purposes only.
+      </p>
     </div>
   );
 }

@@ -369,6 +369,17 @@ function BudgetTracker() {
     (a, b) => new Date(a.due_date) - new Date(b.due_date)
   );
 
+  const upcomingBillsDashboard = (() => {
+    const unpaid = sortedBills.filter((r) => !r.is_paid);
+    const seen = new Set();
+    return unpaid.filter((r) => {
+      const key = r.recurring ? r.title.toLowerCase() : String(r.id);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  })();
+
   const addTransaction = useCallback(() => {
     const normalizedAmount =
       typeof txAmount === 'string' ? txAmount.replace(/,/g, '') : txAmount;
@@ -690,30 +701,30 @@ function BudgetTracker() {
     .slice(0, 10);
 
   const containerCls =
-    'w-full max-w-[1800px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-y-auto';
+    'w-full max-w-[1400px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-y-auto';
 
   return (
     <div className={containerCls}>
-      <nav className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4 flex-shrink-0">
+      <nav className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-4 flex-shrink-0">
         <Link to="/" className="hover:text-sky-400 dark:hover:text-sky-300 transition-colors">Dashboard</Link>
         <span>/</span>
         <span className="font-medium text-gray-900 dark:text-white">Budget Tracker</span>
       </nav>
-      <div className="text-center mb-6 flex-shrink-0">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+      <div className="text-center mb-4 flex-shrink-0">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
           Budget Tracker
         </h1>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
           Track income, expenses, and bills
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 text-sm mb-4 flex-shrink-0">
+      <div className="flex items-center gap-1 text-xs mb-4 flex-shrink-0">
         <button
           type="button"
           onClick={() => setTab('dashboard')}
-          className={tab === 'dashboard' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}
+          className={tab === 'dashboard' ? 'text-sky-400 py-1.5 px-3' : 'text-gray-900 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white py-1.5 px-3'}
         >
           Dashboard
         </button>
@@ -721,7 +732,7 @@ function BudgetTracker() {
         <button
           type="button"
           onClick={() => setTab('bills-income')}
-          className={tab === 'bills-income' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}
+          className={tab === 'bills-income' ? 'text-sky-400 py-1.5 px-3' : 'text-gray-900 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white py-1.5 px-3'}
         >
           Bills &amp; Income
         </button>
@@ -729,7 +740,7 @@ function BudgetTracker() {
         <button
           type="button"
           onClick={() => setTab('settings')}
-          className={tab === 'settings' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}
+          className={tab === 'settings' ? 'text-sky-400 py-1.5 px-3' : 'text-gray-900 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white py-1.5 px-3'}
         >
           Settings
         </button>
@@ -750,27 +761,27 @@ function BudgetTracker() {
                 setTxDate(toYMD(new Date()));
                 setShowTransactionModal(true);
               }}
-              className="py-2 px-3 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="text-xs font-semibold py-1.5 px-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
             >
               Add Transaction
             </button>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Balance</p>
               <p className="text-lg font-bold text-gray-900 dark:text-white">
                 {formatCurrency(balance)}
               </p>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">This Month Income</p>
               <p className="text-lg font-bold text-green-600">
                 {formatCurrency(monthIncome)}
               </p>
             </div>
             <div
-              className={`bg-white dark:bg-gray-800 rounded-lg border p-4 ${
+              className={`bg-white dark:bg-gray-800 rounded-lg border px-3 py-2.5 ${
                 monthIncome > 0 &&
                 (monthExpenses / Math.max(monthIncome, 1)) * 100 >
                   (settings.monthlyExpenseWarningPercent || 80)
@@ -790,17 +801,17 @@ function BudgetTracker() {
                   </p>
                 )}
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Upcoming Bills</p>
               <p className="text-lg font-bold text-gray-900 dark:text-white">
-                {reminders.filter((r) => !r.is_paid).length}
+                {upcomingBillsDashboard.length}
               </p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-400 mb-2">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+              <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-400 mb-2">
                 Income Overview
               </h2>
               {totalIncome > 0 ? (
@@ -810,7 +821,7 @@ function BudgetTracker() {
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         This Month Income
                       </p>
-                      <p className="text-xl font-bold text-gray-900 dark:text-white">
+                      <p className="text-lg font-bold text-gray-900 dark:text-white">
                         {formatCurrency(monthIncome)}
                       </p>
                     </div>
@@ -889,8 +900,8 @@ function BudgetTracker() {
                 </p>
               )}
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-400 mb-2">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+              <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-400 mb-2">
                 Expenses Overview
               </h2>
               {last7Days.some((d) => d.amount > 0) ? (
@@ -982,8 +993,8 @@ function BudgetTracker() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-400 mb-3">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+              <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-400 mb-4">
                 Budget Health
               </h2>
               <div className="space-y-2">
@@ -1028,11 +1039,18 @@ function BudgetTracker() {
                 </p>
               </div>
             </div>
-            <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-400">
-                  Upcoming Bills
-                </h2>
+            <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-400">
+                    Upcoming Bills
+                  </h2>
+                  {upcomingBillsDashboard.length > 0 && (
+                    <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+                      {upcomingBillsDashboard.length} bill{upcomingBillsDashboard.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={() => {
@@ -1045,151 +1063,66 @@ function BudgetTracker() {
                     setBillRecurring(false);
                     setShowBillModal(true);
                   }}
-                  className="text-xs font-medium text-sky-400 hover:text-sky-300"
+                  className="text-xs font-medium text-sky-500 hover:text-sky-400"
                 >
-                  Add Bill
+                  + Add Bill
                 </button>
               </div>
-              <div className="mt-1 border-t border-gray-100 dark:border-gray-700 pt-2">
-                <div className="grid grid-cols-12 gap-2 text-[11px] font-medium text-gray-500 dark:text-gray-400 px-2 pb-1">
-                  <span className="col-span-4">Bill</span>
-                  <span className="col-span-2 text-right">Amount</span>
-                  <span className="col-span-3">Due</span>
-                  <span className="col-span-2">Status</span>
-                  <span className="col-span-1 text-right">Actions</span>
-                </div>
-                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                  {sortedBills.length === 0 ? (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 px-2 py-2">
-                      No bills yet. Add your first bill to see it here.
-                    </p>
-                  ) : (
-                    sortedBills.map((r) => {
-                      const status = getBillStatus(r);
-                      const catColor =
-                        categories.find((c) => c.name === r.category)?.color || '#6b7280';
-                      const dueDate = r.due_date
-                        ? new Date(r.due_date).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                          })
-                        : '-';
-                      return (
-                        <div
-                          key={r.id}
-                          className="grid grid-cols-12 gap-2 items-center rounded bg-gray-50 dark:bg-gray-700/40 hover:bg-gray-100 dark:hover:bg-gray-700 px-2 py-1.5"
-                        >
-                          <div className="col-span-4 flex items-center gap-2 min-w-0">
-                            <div
-                              className="w-2 h-2 rounded-full flex-shrink-0"
-                              style={{ backgroundColor: catColor }}
-                            />
-                            <div className="min-w-0">
-                              <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
-                                {r.title}
-                              </p>
-                              <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                                {r.category}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="col-span-2 text-xs font-semibold text-gray-900 dark:text-white text-right">
-                            {formatCurrency(parseFloat(r.amount || 0))}
-                          </div>
-                          <div className="col-span-3 text-xs text-gray-800 dark:text-gray-200">
-                            {dueDate}
-                          </div>
-                          <div className="col-span-2">
-                            <span
-                              className={`inline-flex items-center justify-center text-[10px] px-1.5 py-0.5 rounded ${status.cls}`}
-                            >
-                              {status.text}
-                            </span>
-                          </div>
-                          <div className="col-span-1 flex items-center justify-end gap-1">
-                            {!r.is_paid && (
-                              <button
-                                type="button"
-                                onClick={() => markBillPaid(r.id, true)}
-                                className="inline-flex items-center justify-center rounded-full bg-green-50 dark:bg-green-900/40 text-[10px] text-green-700 dark:text-green-300 px-1.5 py-0.5 hover:bg-green-100 dark:hover:bg-green-800"
-                              >
-                                Pay
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => openEditBill(r)}
-                              className="inline-flex items-center justify-center rounded-full bg-sky-50 dark:bg-sky-900/40 text-[10px] text-sky-600 dark:text-sky-300 px-1.5 py-0.5 hover:bg-sky-100 dark:hover:bg-sky-800"
-                            >
-                              Edit
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-400 mb-3">
-              Recent Transactions
-            </h2>
-            <div className="border-t border-gray-100 dark:border-gray-700 pt-2">
-              <div className="grid grid-cols-12 gap-2 text-[11px] font-medium text-gray-500 dark:text-gray-400 px-2 pb-1">
-                <span className="col-span-2">Date</span>
-                <span className="col-span-4">Description</span>
-                <span className="col-span-2">Category</span>
-                <span className="col-span-2 text-right">Amount</span>
-                <span className="col-span-1 text-right">Type</span>
-                <span className="col-span-1 text-right">Actions</span>
-              </div>
-              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                {recentTransactions.length === 0 ? (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 px-2 py-2">
-                    No transactions yet. Add income or expenses to see them here.
+              <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                {upcomingBillsDashboard.length === 0 ? (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 py-4 text-center">
+                    No upcoming bills. Add a bill to track it here.
                   </p>
                 ) : (
-                  recentTransactions.map((tx) => {
-                    const catColor = categories.find((c) => c.name === tx.category)?.color || '#6b7280';
-                    const isIncome = tx.type === 'income';
+                  upcomingBillsDashboard.map((r) => {
+                    const status = getBillStatus(r);
+                    const catColor =
+                      categories.find((c) => c.name === r.category)?.color || '#6b7280';
+                    const dueDate = r.due_date
+                      ? new Date(r.due_date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                        })
+                      : '-';
                     return (
                       <div
-                        key={tx.id}
-                        className="grid grid-cols-12 gap-2 items-center rounded bg-gray-50 dark:bg-gray-700/40 hover:bg-gray-100 dark:hover:bg-gray-700 px-2 py-1.5"
+                        key={r.id}
+                        className="flex items-center gap-3 rounded-lg bg-gray-50 dark:bg-gray-700/40 hover:bg-gray-100 dark:hover:bg-gray-700 px-3 py-2.5 transition-colors"
                       >
-                        <span className="col-span-2 text-xs text-gray-800 dark:text-gray-200">
-                          {tx.date ? new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-'}
-                        </span>
-                        <span className="col-span-4 text-xs text-gray-900 dark:text-white truncate">
-                          {tx.description || '—'}
-                        </span>
-                        <div className="col-span-2 flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: catColor }} />
-                          <span className="text-xs text-gray-700 dark:text-gray-300 truncate">{tx.category || '—'}</span>
+                        <div
+                          className="w-1 self-stretch rounded-full flex-shrink-0"
+                          style={{ backgroundColor: catColor }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                              {r.title}
+                            </p>
+                            {r.recurring && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200 flex-shrink-0">
+                                Recurring
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                            {r.category} · Due {dueDate}
+                          </p>
                         </div>
-                        <span className={`col-span-2 text-xs font-semibold text-right ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
-                          {isIncome ? '+' : '-'}{formatCurrency(parseFloat(tx.amount || 0))}
-                        </span>
-                        <span className={`col-span-1 text-[10px] px-1.5 py-0.5 rounded text-right ${isIncome ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                          {isIncome ? 'In' : 'Out'}
-                        </span>
-                        <div className="col-span-1 flex justify-end gap-0.5">
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {formatCurrency(parseFloat(r.amount || 0))}
+                          </span>
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${status.cls}`}
+                          >
+                            {status.text}
+                          </span>
                           <button
                             type="button"
-                            onClick={() => openEditTransaction(tx)}
-                            className="text-[10px] text-sky-600 hover:text-sky-700"
+                            onClick={() => markBillPaid(r.id, true)}
+                            className="text-[11px] font-medium text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 flex-shrink-0"
                           >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deleteTransaction(tx.id)}
-                            className="text-[10px] text-red-500 hover:text-red-600"
-                          >
-                            Del
+                            Pay
                           </button>
                         </div>
                       </div>
@@ -1200,6 +1133,68 @@ function BudgetTracker() {
             </div>
           </div>
 
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+            <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-400 mb-4">
+              Recent Transactions
+            </h2>
+            <div className="border-t border-gray-100 dark:border-gray-700 pt-2 space-y-1.5 max-h-56 overflow-y-auto pr-1">
+              {recentTransactions.length === 0 ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400 py-4 text-center">
+                  No transactions yet. Add income or expenses to see them here.
+                </p>
+              ) : (
+                recentTransactions.map((tx) => {
+                  const catColor = categories.find((c) => c.name === tx.category)?.color || '#6b7280';
+                  const isIncome = tx.type === 'income';
+                  return (
+                    <div
+                      key={tx.id}
+                      className="flex items-center gap-3 rounded-lg bg-gray-50 dark:bg-gray-700/40 hover:bg-gray-100 dark:hover:bg-gray-700 px-3 py-2.5 transition-colors"
+                    >
+                      <div
+                        className="w-1 self-stretch rounded-full flex-shrink-0"
+                        style={{ backgroundColor: isIncome ? '#22c55e' : catColor }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {tx.description || '—'}
+                        </p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                          {tx.date ? new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-'}
+                          {tx.category ? ` · ${tx.category}` : ''}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <span className={`text-sm font-semibold ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
+                          {isIncome ? '+' : '-'}{formatCurrency(parseFloat(tx.amount || 0))}
+                        </span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${isIncome ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'}`}>
+                          {isIncome ? 'Income' : 'Expense'}
+                        </span>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEditTransaction(tx)}
+                            className="text-[11px] font-medium text-sky-500 hover:text-sky-400"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteTransaction(tx.id)}
+                            className="text-[11px] font-medium text-red-500 hover:text-red-400"
+                          >
+                            Del
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
         </div>
       )}
 
@@ -1207,10 +1202,10 @@ function BudgetTracker() {
       {tab === 'bills-income' && (
         <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-y-auto">
           {/* Combined summary card */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               <div>
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-400">
+                <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-400">
                   Bills
                 </h2>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">Due this month</p>
@@ -1239,7 +1234,7 @@ function BudgetTracker() {
                 </div>
               </div>
               <div>
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-400">
+                <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-400">
                   Income
                 </h2>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">This month</p>
@@ -1269,7 +1264,7 @@ function BudgetTracker() {
             <button
               type="button"
               onClick={() => setBiSubView('unpaid')}
-              className={`px-3 py-2 text-sm font-medium rounded-lg ${
+              className={`text-xs font-semibold py-1.5 px-3 rounded-lg ${
                 biSubView === 'unpaid'
                   ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
                   : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -1280,7 +1275,7 @@ function BudgetTracker() {
             <button
               type="button"
               onClick={() => setBiSubView('paid')}
-              className={`px-3 py-2 text-sm font-medium rounded-lg ${
+              className={`text-xs font-semibold py-1.5 px-3 rounded-lg ${
                 biSubView === 'paid'
                   ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
                   : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -1291,7 +1286,7 @@ function BudgetTracker() {
             <button
               type="button"
               onClick={() => setBiSubView('income')}
-              className={`px-3 py-2 text-sm font-medium rounded-lg ${
+              className={`text-xs font-semibold py-1.5 px-3 rounded-lg ${
                 biSubView === 'income'
                   ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
                   : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -1317,7 +1312,7 @@ function BudgetTracker() {
                   setTxDate(toYMD(new Date()));
                   setShowTransactionModal(true);
                 }}
-                className="py-2 px-3 text-sm font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                className="text-xs font-semibold py-1.5 px-3 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
               >
                 Add Income
               </button>
@@ -1334,7 +1329,7 @@ function BudgetTracker() {
                   setBillRecurring(false);
                   setShowBillModal(true);
                 }}
-                className="py-2 px-3 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="text-xs font-semibold py-1.5 px-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
               >
                 Add Bill
               </button>
@@ -1348,7 +1343,7 @@ function BudgetTracker() {
                   ? setIncomeSearch(e.target.value)
                   : setBillsSearch(e.target.value)
               }
-              className="px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white w-full sm:w-40"
+              className="text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white w-full sm:w-40"
             />
             <select
               value={biSubView === 'income' ? incomeCategoryFilter : billsCategoryFilter}
@@ -1357,7 +1352,7 @@ function BudgetTracker() {
                   ? setIncomeCategoryFilter(e.target.value)
                   : setBillsCategoryFilter(e.target.value)
               }
-              className="px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="all">All Categories</option>
               {categories.map((c) => (
@@ -1372,7 +1367,7 @@ function BudgetTracker() {
                 onClick={() =>
                   biSubView === 'income' ? setIncomeView('grid') : setBillsView('grid')
                 }
-                className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2.5 rounded text-xs ${
+                className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2 py-1.5 rounded text-xs ${
                   (biSubView === 'income' ? incomeView : billsView) === 'grid'
                     ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
                     : 'text-gray-500'
@@ -1385,7 +1380,7 @@ function BudgetTracker() {
                 onClick={() =>
                   biSubView === 'income' ? setIncomeView('list') : setBillsView('list')
                 }
-                className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2.5 rounded text-xs ${
+                className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2 py-1.5 rounded text-xs ${
                   (biSubView === 'income' ? incomeView : billsView) === 'list'
                     ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
                     : 'text-gray-500'
@@ -1424,7 +1419,7 @@ function BudgetTracker() {
                   return (
                     <div
                       key={r.id}
-                      className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
+                      className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
@@ -1528,7 +1523,7 @@ function BudgetTracker() {
                   return (
                     <div
                       key={r.id}
-                      className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 border-l-4 border-l-emerald-500 p-4"
+                      className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 border-l-4 border-l-emerald-500 px-3 py-2.5"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
@@ -1601,8 +1596,8 @@ function BudgetTracker() {
           {biSubView === 'income' && (
             <>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-400 mb-2">
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+                  <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-400 mb-2">
                     Income Trend (Last 7 Days)
                   </h2>
                   <div className="h-32">
@@ -1629,8 +1624,8 @@ function BudgetTracker() {
                     </ResponsiveContainer>
                   </div>
                 </div>
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-400 mb-2">
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+                  <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-400 mb-2">
                     Top Income Sources
                   </h2>
                   {incomeByCategorySorted.length > 0 ? (
@@ -1705,7 +1700,7 @@ function BudgetTracker() {
                       return (
                         <div
                           key={tx.id}
-                          className="flex items-center justify-between gap-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3"
+                          className="flex items-center justify-between gap-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5"
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             <span
@@ -1748,7 +1743,7 @@ function BudgetTracker() {
                     return (
                       <div
                         key={tx.id}
-                        className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
+                        className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
@@ -1803,9 +1798,9 @@ function BudgetTracker() {
       {/* Settings */}
       {tab === 'settings' && (
         <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-y-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
             <div className="flex justify-between items-center mb-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-400">
+              <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-400">
                 Categories
               </h2>
               <button
@@ -1815,7 +1810,7 @@ function BudgetTracker() {
                   setCatColor('#3b82f6');
                   setShowCategoryModal(true);
                 }}
-                className="py-1.5 px-2 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="text-xs font-semibold py-1.5 px-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
               >
                 Add Category
               </button>
@@ -1824,7 +1819,7 @@ function BudgetTracker() {
               {categories.map((c) => (
                 <div
                   key={c.id}
-                  className="flex items-center gap-2 p-2 rounded bg-gray-50 dark:bg-gray-700/50"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded bg-gray-50 dark:bg-gray-700/50"
                 >
                   <div
                     className="w-3 h-3 rounded-full flex-shrink-0"
@@ -1837,8 +1832,8 @@ function BudgetTracker() {
               ))}
             </div>
           </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-400 mb-2">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+            <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-400 mb-2">
               Budget Settings
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1859,7 +1854,7 @@ function BudgetTracker() {
                     }));
                     setIsDirty(true);
                   }}
-                  className="w-full px-2 py-1.5 text-xs border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
                 <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
                   When monthly expenses cross this share of income, dashboard cards will
@@ -1883,7 +1878,7 @@ function BudgetTracker() {
                     }));
                     setIsDirty(true);
                   }}
-                  className="w-full px-2 py-1.5 text-xs border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
                 <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
                   Bills due within this many days will be marked as due soon.
@@ -1902,7 +1897,7 @@ function BudgetTracker() {
                     }));
                     setIsDirty(true);
                   }}
-                  className="w-full px-2 py-1.5 text-xs border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
                   {categories.map((c) => (
                     <option key={c.id} value={c.name}>
@@ -1928,7 +1923,7 @@ function BudgetTracker() {
                       }));
                       setIsDirty(true);
                     }}
-                    className="w-full px-2 py-1.5 text-xs border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="USD">USD — US Dollar</option>
                     <option value="EUR">EUR — Euro</option>
@@ -1960,14 +1955,14 @@ function BudgetTracker() {
               </div>
             </div>
           </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-400 mb-2">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+            <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-900 dark:text-gray-400 mb-2">
               Data
             </h2>
             <button
               type="button"
               onClick={clearAllData}
-              className="py-2 px-3 text-xs font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700"
+              className="text-xs font-semibold py-1.5 px-3 rounded-lg bg-red-600 text-white hover:bg-red-700"
             >
               Clear All Data
             </button>
@@ -1982,10 +1977,10 @@ function BudgetTracker() {
           onClick={() => setShowTransactionModal(false)}
         >
           <div
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-sm"
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl px-3 py-2.5 w-full max-w-sm"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">
+            <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-4">
               Add Transaction
             </h3>
             <div className="space-y-2">
@@ -1996,7 +1991,7 @@ function BudgetTracker() {
                 <select
                   value={txType}
                   onChange={(e) => setTxType(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
                   <option value="income">Income</option>
                   <option value="expense">Expense</option>
@@ -2011,7 +2006,7 @@ function BudgetTracker() {
                   step="0.01"
                   value={txAmount}
                   onChange={(e) => setTxAmount(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
               <div>
@@ -2021,7 +2016,7 @@ function BudgetTracker() {
                 <select
                   value={txCategory}
                   onChange={(e) => setTxCategory(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
                   {categories.map((c) => (
                     <option key={c.id} value={c.name}>
@@ -2038,7 +2033,7 @@ function BudgetTracker() {
                   type="text"
                   value={txDescription}
                   onChange={(e) => setTxDescription(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
               <div>
@@ -2049,7 +2044,7 @@ function BudgetTracker() {
                   type="date"
                   value={txDate}
                   onChange={(e) => setTxDate(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
             </div>
@@ -2057,14 +2052,14 @@ function BudgetTracker() {
               <button
                 type="button"
                 onClick={() => setShowTransactionModal(false)}
-                className="flex-1 py-1.5 text-sm font-medium border rounded text-gray-700 dark:text-gray-300"
+                className="flex-1 text-xs font-semibold py-1.5 px-3 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={addTransaction}
-                className="flex-1 py-1.5 text-sm font-semibold bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="flex-1 text-xs font-semibold py-1.5 px-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
               >
                 Save
               </button>
@@ -2080,10 +2075,10 @@ function BudgetTracker() {
           onClick={() => setShowBillModal(false)}
         >
           <div
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-sm max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl px-3 py-2.5 w-full max-w-sm max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">
+            <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-4">
               {editingBillId ? 'Edit Bill' : 'Add Bill'}
             </h3>
             <div className="space-y-2">
@@ -2096,7 +2091,7 @@ function BudgetTracker() {
                   value={billTitle}
                   onChange={(e) => setBillTitle(e.target.value)}
                   placeholder="e.g., Rent, Utilities"
-                  className="w-full px-2 py-1.5 text-sm border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
               <div>
@@ -2108,7 +2103,7 @@ function BudgetTracker() {
                   step="0.01"
                   value={billAmount}
                   onChange={(e) => setBillAmount(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
               <div>
@@ -2119,7 +2114,7 @@ function BudgetTracker() {
                   type="date"
                   value={billDueDate}
                   onChange={(e) => setBillDueDate(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
               <div>
@@ -2129,7 +2124,7 @@ function BudgetTracker() {
                 <select
                   value={billCategory}
                   onChange={(e) => setBillCategory(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
                   {categories.map((c) => (
                     <option key={c.id} value={c.name}>
@@ -2147,7 +2142,7 @@ function BudgetTracker() {
                   value={billWebsite}
                   onChange={(e) => setBillWebsite(e.target.value)}
                   placeholder="https://..."
-                  className="w-full px-2 py-1.5 text-sm border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -2173,7 +2168,7 @@ function BudgetTracker() {
                   <select
                     value={billRecurrenceType}
                     onChange={(e) => setBillRecurrenceType(e.target.value)}
-                    className="w-full px-2 py-1.5 text-sm border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
@@ -2187,14 +2182,14 @@ function BudgetTracker() {
               <button
                 type="button"
                 onClick={() => setShowBillModal(false)}
-                className="flex-1 py-1.5 text-sm font-medium border rounded text-gray-700 dark:text-gray-300"
+                className="flex-1 text-xs font-semibold py-1.5 px-3 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={addBill}
-                className="flex-1 py-1.5 text-sm font-semibold bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="flex-1 text-xs font-semibold py-1.5 px-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
               >
                 Save
               </button>
@@ -2210,10 +2205,10 @@ function BudgetTracker() {
           onClick={() => setShowCategoryModal(false)}
         >
           <div
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-full max-w-sm"
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl px-3 py-2.5 w-full max-w-sm"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">
+            <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-4">
               Add Category
             </h3>
             <div className="space-y-2">
@@ -2225,7 +2220,7 @@ function BudgetTracker() {
                   type="text"
                   value={catName}
                   onChange={(e) => setCatName(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full text-xs py-1.5 px-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
               <div>
@@ -2244,14 +2239,14 @@ function BudgetTracker() {
               <button
                 type="button"
                 onClick={() => setShowCategoryModal(false)}
-                className="flex-1 py-1.5 text-sm font-medium border rounded text-gray-700 dark:text-gray-300"
+                className="flex-1 text-xs font-semibold py-1.5 px-3 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={addCategory}
-                className="flex-1 py-1.5 text-sm font-semibold bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="flex-1 text-xs font-semibold py-1.5 px-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
               >
                 Save
               </button>

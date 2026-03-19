@@ -40,13 +40,13 @@ export function CreateCategoryModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 shadow-xl max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-md rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-4">
           <h2
             id="create-category-modal-title"
-            className="text-sm font-semibold text-gray-900 dark:text-gray-100"
+            className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100"
           >
             Create new checklist
           </h2>
@@ -60,11 +60,11 @@ export function CreateCategoryModal({
           </button>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div>
             <label
               htmlFor="create-category-title"
-              className="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1"
+              className="block text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1"
             >
               Checklist title
             </label>
@@ -75,18 +75,18 @@ export function CreateCategoryModal({
               onChange={(e) => setTitle(e.target.value)}
               maxLength={100}
               placeholder="e.g. Options playbook"
-              className="block w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+              className="block w-full px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
             />
           </div>
 
           <div>
             <label
               htmlFor="create-category-item"
-              className="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1"
+              className="block text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1"
             >
               Add items
             </label>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <input
                 id="create-category-item"
                 type="text"
@@ -100,13 +100,13 @@ export function CreateCategoryModal({
                 }}
                 maxLength={100}
                 placeholder="e.g. Check options flow"
-                className="block flex-1 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                className="block flex-1 px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
               />
               <button
                 type="button"
                 onClick={onAddItem}
                 disabled={!itemInput.trim()}
-                className="inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
               >
                 + Add
               </button>
@@ -114,18 +114,18 @@ export function CreateCategoryModal({
           </div>
 
           {items.length > 0 && (
-            <ul className="space-y-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3 max-h-48 overflow-y-auto">
+            <ul className="space-y-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-3 py-2.5 max-h-48 overflow-y-auto">
               {items.map((item, index) => (
                 <li
                   key={`${item}-${index}`}
-                  className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100"
+                  className="flex items-center gap-3 text-xs text-gray-800 dark:text-gray-100"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
                   <span className="flex-1 min-w-0 truncate">{item}</span>
                   <button
                     type="button"
                     onClick={() => onRemoveItem(index)}
-                    className="text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 shrink-0"
+                    className="text-xs font-semibold text-gray-400 hover:text-red-500 dark:hover:text-red-400 shrink-0"
                   >
                     Remove
                   </button>
@@ -139,7 +139,7 @@ export function CreateCategoryModal({
               type="button"
               onClick={onCreate}
               disabled={!canCreate}
-              className="inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Create checklist
             </button>

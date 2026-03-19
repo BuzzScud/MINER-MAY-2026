@@ -15,11 +15,11 @@ export function ChecklistHistory({
   return (
     <Panel title="History">
       {historyDates.length === 0 ? (
-        <p className="text-sm text-gray-600 dark:text-gray-400 m-0">
+        <p className="text-xs text-gray-500 dark:text-gray-400 m-0">
           No archived days yet. Complete your checklist and save to build history.
         </p>
       ) : (
-        <ul className="divide-y divide-gray-200 dark:divide-gray-700 text-sm space-y-2">
+        <ul className="divide-y divide-gray-200 dark:divide-gray-700 text-xs space-y-2">
           {historyDates.map((iso) => {
             const completed = history[iso] || [];
             const meta = historyMeta[iso] || {};
@@ -32,21 +32,21 @@ export function ChecklistHistory({
             return (
               <li key={iso} className="pt-2 first:pt-0">
                 <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-                  <div className="p-2">
-                    <div className="flex items-center gap-2 mb-1.5">
+                  <div className="px-3 py-2.5">
+                    <div className="flex items-center gap-3 mb-1.5">
                       <button
                         type="button"
                         onClick={() => onLoadRun(iso)}
-                        className={`flex-1 flex flex-col items-start gap-0.5 text-left rounded px-2 py-1.5 min-w-0 ${
+                        className={`flex-1 flex flex-col items-start gap-0.5 text-left rounded-lg px-2.5 py-1.5 min-w-0 ${
                           isSelected
                             ? 'bg-indigo-50 dark:bg-indigo-900/20 ring-1 ring-indigo-200 dark:ring-indigo-800'
                             : 'hover:bg-gray-50 dark:hover:bg-gray-800/70'
                         }`}
                       >
-                        <span className="text-sm font-medium text-gray-900 dark:text-white truncate w-full">
+                        <span className="text-xs font-semibold text-gray-900 dark:text-white truncate w-full">
                           {meta.title || iso}
                         </span>
-                        <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
                           {completed.length} of {totalItems} items · {iso}
                         </span>
                       </button>
@@ -60,18 +60,18 @@ export function ChecklistHistory({
                         style={{ width: `${pct * 100}%` }}
                       />
                     </div>
-                    <div className="flex items-center gap-1 mt-2">
+                    <div className="flex items-center gap-3 mt-2">
                       <button
                         type="button"
                         onClick={() => onLoadRun(iso)}
-                        className="flex-1 px-2 py-1 rounded text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
+                        className="flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
                       >
                         Load
                       </button>
                       <button
                         type="button"
                         onClick={() => onOpenDeleteModal(iso)}
-                        className="px-2 py-1 rounded text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        className="py-1.5 px-3 rounded-lg text-xs font-semibold text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                         aria-label={`Delete saved checklist ${iso}`}
                       >
                         Delete

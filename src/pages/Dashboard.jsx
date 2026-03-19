@@ -266,36 +266,36 @@ function SortableWorldClock({ id, timezone, city, country }) {
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 cursor-move touch-none"
+      className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 cursor-move touch-none"
       {...attributes}
       {...listeners}
     >
       <div className="text-center">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="flex items-center justify-center gap-1.5 mb-1">
+          <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
           </svg>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{city}</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{city}</h3>
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{country}</p>
-        <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2 font-mono">
+        <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-2">{country}</p>
+        <div className="text-lg font-bold text-gray-900 dark:text-white mb-1 font-mono">
           {timeStr}
         </div>
-        <div className="text-sm text-black dark:text-gray-400 mb-4">
+        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
           {dateStr}
         </div>
         
         {/* Daily Global Numerology Forecast */}
-        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+        <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-center gap-1.5 mb-1">
+            <span className="text-lg font-bold text-purple-600 dark:text-purple-400">
               {forecast.number}
             </span>
-            <span className="text-sm font-semibold text-gray-900 dark:text-white">
+            <span className="text-xs font-semibold text-gray-900 dark:text-white">
               {forecast.title}
             </span>
           </div>
-          <p className="text-xs text-black dark:text-gray-400 leading-relaxed">
+          <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
             {forecast.description}
           </p>
         </div>
@@ -355,28 +355,28 @@ function WorldClock({ timezone, city, country }) {
   const forecast = getNumerologyForecast(universalDayNumber);
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
       <div className="text-center">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{city}</h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{country}</p>
-        <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2 font-mono">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">{city}</h3>
+        <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-2">{country}</p>
+        <div className="text-lg font-bold text-gray-900 dark:text-white mb-1 font-mono">
           {timeStr}
         </div>
-        <div className="text-sm text-black dark:text-gray-400 mb-4">
+        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
           {dateStr}
         </div>
         
         {/* Daily Global Numerology Forecast */}
-        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+        <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-center gap-1.5 mb-1">
+            <span className="text-lg font-bold text-purple-600 dark:text-purple-400">
               {forecast.number}
             </span>
-            <span className="text-sm font-semibold text-gray-900 dark:text-white">
+            <span className="text-xs font-semibold text-gray-900 dark:text-white">
               {forecast.title}
             </span>
           </div>
-          <p className="text-xs text-black dark:text-gray-400 leading-relaxed">
+          <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
             {forecast.description}
           </p>
         </div>
@@ -406,7 +406,7 @@ function SortableSection({ id, children }) {
     <div
       ref={setNodeRef}
       style={style}
-      className="relative mb-6"
+      className="relative mb-4"
     >
       <div
         {...attributes}
@@ -446,10 +446,10 @@ function VolumeTooltip({ volume, symbol }) {
   };
 
   return (
-    <div className="absolute z-50 w-56 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 bottom-full left-1/2 transform -translate-x-1/2 mb-3">
-      <div className="text-xs font-semibold mb-2 text-gray-500 dark:text-gray-400 uppercase tracking-wide">{symbol} Volume</div>
-      <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatVolume(volume)}</div>
-      <div className="text-xs text-black dark:text-gray-400">Total shares traded</div>
+    <div className="absolute z-50 w-48 px-3 py-2.5 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 bottom-full left-1/2 transform -translate-x-1/2 mb-3">
+      <div className="text-[10px] font-semibold mb-1 text-gray-500 dark:text-gray-400 uppercase tracking-wider">{symbol} Volume</div>
+      <div className="text-lg font-bold text-gray-900 dark:text-white mb-0.5">{formatVolume(volume)}</div>
+      <div className="text-[10px] text-gray-500 dark:text-gray-400">Total shares traded</div>
       {/* Arrow pointing down */}
       <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-px">
         <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-white dark:border-t-gray-800"></div>
@@ -481,16 +481,16 @@ function SortableStockCard({ id, symbol, data, loading, onRemove, showTooltips =
       <div
         ref={setNodeRef}
         style={style}
-        className="relative group bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 cursor-move touch-none"
+        className="relative group bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 cursor-move touch-none"
         {...attributes}
         {...listeners}
       >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
             </svg>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{symbol}</h3>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{symbol}</h3>
           </div>
           <div className="flex items-center gap-2">
             <div className="animate-spin rounded-full h-5 w-5 border-2 border-sky-200 dark:border-sky-800 border-t-sky-400"></div>
@@ -521,16 +521,16 @@ function SortableStockCard({ id, symbol, data, loading, onRemove, showTooltips =
       <div
         ref={setNodeRef}
         style={style}
-        className="relative group bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 cursor-move touch-none"
+        className="relative group bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 cursor-move touch-none"
         {...attributes}
         {...listeners}
       >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
             </svg>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{symbol}</h3>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{symbol}</h3>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 rounded">
@@ -565,16 +565,16 @@ function SortableStockCard({ id, symbol, data, loading, onRemove, showTooltips =
       <div
         ref={setNodeRef}
         style={style}
-        className="relative group bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 cursor-move touch-none"
+        className="relative group bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 cursor-move touch-none"
         {...attributes}
         {...listeners}
       >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
             </svg>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{symbol}</h3>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{symbol}</h3>
           </div>
           {onRemove && (
             <button
@@ -644,12 +644,12 @@ function SortableStockCard({ id, symbol, data, loading, onRemove, showTooltips =
         <VolumeTooltip volume={data.volume} symbol={symbol} />
       )}
       
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
           </svg>
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white">{symbol}</h3>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white">{symbol}</h3>
         </div>
         <div className="flex items-center gap-2">
           <span className={`text-xs px-2 py-1 rounded ${statusColor}`}>
@@ -673,19 +673,19 @@ function SortableStockCard({ id, symbol, data, loading, onRemove, showTooltips =
         </div>
       </div>
       
-      <div className="mb-4">
-        <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+      <div className="mb-2">
+        <p className="text-lg font-bold text-gray-900 dark:text-white mb-0.5">
           {pricePrefix}{data.price.toFixed(2)}
         </p>
         <div className="flex items-center gap-2">
-          <span className={`text-lg font-semibold ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+          <span className={`text-xs font-semibold ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             {data.change !== 0 ? (
               `${isPositive ? '+' : ''}${pricePrefix}${Math.abs(data.change).toFixed(2)}`
             ) : (
               `${pricePrefix}0.00`
             )}
           </span>
-          <span className={`text-lg font-semibold ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+          <span className={`text-xs font-semibold ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             {data.changePercent !== 0 ? (
               `(${isPositive ? '+' : ''}${Math.abs(data.changePercent).toFixed(2)}%)`
             ) : (
@@ -695,8 +695,8 @@ function SortableStockCard({ id, symbol, data, loading, onRemove, showTooltips =
         </div>
       </div>
 
-      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between text-sm">
+      <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between text-xs">
           <span className="text-gray-500 dark:text-gray-400">Previous Close</span>
           <span className="text-gray-900 dark:text-white font-medium">
             {pricePrefix}{(data.previousClose || (data.price - data.change)).toFixed(2)}
@@ -711,9 +711,9 @@ function SortableStockCard({ id, symbol, data, loading, onRemove, showTooltips =
 function StockInfoCard({ symbol, data, loading, onRemove }) {
   if (loading) {
     return (
-      <div className="relative group bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{symbol}</h3>
+      <div className="relative group bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{symbol}</h3>
           <div className="flex items-center gap-2">
             <div className="animate-spin rounded-full h-5 w-5 border-2 border-sky-200 dark:border-sky-800 border-t-sky-400"></div>
             {onRemove && (
@@ -737,9 +737,9 @@ function StockInfoCard({ symbol, data, loading, onRemove }) {
 
   if (data?.error || data?.price === null) {
     return (
-      <div className="relative group bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{symbol}</h3>
+      <div className="relative group bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{symbol}</h3>
           <div className="flex items-center gap-2">
             <span className="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 rounded">
               Error
@@ -767,9 +767,9 @@ function StockInfoCard({ symbol, data, loading, onRemove }) {
 
   if (!data) {
     return (
-      <div className="relative group bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{symbol}</h3>
+      <div className="relative group bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{symbol}</h3>
           {onRemove && (
             <button
               type="button"
@@ -829,8 +829,8 @@ function StockInfoCard({ symbol, data, loading, onRemove }) {
         <VolumeTooltip volume={data.volume} symbol={symbol} />
       )}
       
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white">{symbol}</h3>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-bold text-gray-900 dark:text-white">{symbol}</h3>
         <div className="flex items-center gap-2">
           <span className={`text-xs px-2 py-1 rounded ${statusColor}`}>
             {marketStatus}
@@ -850,19 +850,19 @@ function StockInfoCard({ symbol, data, loading, onRemove }) {
         </div>
       </div>
       
-      <div className="mb-4">
-        <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+      <div className="mb-2">
+        <p className="text-lg font-bold text-gray-900 dark:text-white mb-0.5">
           {pricePrefix}{data.price.toFixed(2)}
         </p>
         <div className="flex items-center gap-2">
-          <span className={`text-lg font-semibold ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+          <span className={`text-xs font-semibold ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             {data.change !== 0 ? (
               `${isPositive ? '+' : ''}${pricePrefix}${Math.abs(data.change).toFixed(2)}`
             ) : (
               `${pricePrefix}0.00`
             )}
           </span>
-          <span className={`text-lg font-semibold ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+          <span className={`text-xs font-semibold ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             {data.changePercent !== 0 ? (
               `(${isPositive ? '+' : ''}${Math.abs(data.changePercent).toFixed(2)}%)`
             ) : (
@@ -872,8 +872,8 @@ function StockInfoCard({ symbol, data, loading, onRemove }) {
         </div>
       </div>
 
-      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between text-sm">
+      <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between text-xs">
           <span className="text-gray-500 dark:text-gray-400">Previous Close</span>
           <span className="text-gray-900 dark:text-white font-medium">
             {pricePrefix}{(data.previousClose || (data.price - data.change)).toFixed(2)}
@@ -1136,14 +1136,14 @@ function Dashboard() {
         return (
           <SortableSection key={sectionId} id={sectionId}>
             <div>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-400 mb-4">World Clocks</h2>
+              <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">World Clocks</h2>
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragEnd={handleWorldClocksDragEnd}
               >
                 <SortableContext items={worldClocks.map((clock) => clock.id)}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                     {worldClocks.map((clock) => (
                       <SortableWorldClock
                         key={clock.id}
@@ -1163,9 +1163,9 @@ function Dashboard() {
         return (
           <SortableSection key={sectionId} id={sectionId}>
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-400">Market</h2>
-                <div className="flex items-center gap-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Market</h2>
+                <div className="flex items-center gap-3">
                   {lastUpdate && (
                     <span className="text-xs text-gray-500 dark:text-gray-400">
                       Last updated: {lastUpdate.toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}
@@ -1175,7 +1175,7 @@ function Dashboard() {
                     type="button"
                     onClick={loadStockData}
                     disabled={loading}
-                    className="min-h-[44px] rounded bg-gray-200 dark:bg-gray-700 px-4 py-2.5 text-sm text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
+                    className="rounded-lg bg-gray-200 dark:bg-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-1.5"
                   >
                     <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -1186,7 +1186,7 @@ function Dashboard() {
               </div>
               
               {/* Add Symbol Input */}
-              <div className="mb-4 flex gap-2">
+              <div className="mb-3 flex gap-2">
                 <input
                   type="text"
                   value={newSymbolInput}
@@ -1194,13 +1194,13 @@ function Dashboard() {
                   onKeyPress={handleKeyPress}
                   placeholder="Enter symbol (e.g., AAPL, TSLA, MSFT)"
                   disabled={addingSymbol}
-                  className="flex-1 px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-2.5 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <button
                   type="button"
                   onClick={addSymbol}
                   disabled={addingSymbol || !newSymbolInput.trim()}
-                  className="min-h-[44px] px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 text-xs bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {addingSymbol ? (
                     <>
@@ -1226,7 +1226,7 @@ function Dashboard() {
                 onDragEnd={handleStockCardsDragEnd}
               >
                 <SortableContext items={symbols.map((s) => s.display)}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                     {symbols.map((symbolConfig) => (
                       <SortableStockCard
                         key={symbolConfig.display}
@@ -1250,13 +1250,13 @@ function Dashboard() {
   };
 
   return (
-    <div className="w-full max-w-[1800px] mx-auto flex flex-col space-y-6">
+    <div className="w-full max-w-[1400px] mx-auto px-4 flex flex-col space-y-4">
       <div>
-        <nav className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
+        <nav className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-2">
           <span className="font-medium text-gray-900 dark:text-white">Dashboard</span>
         </nav>
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p className="text-sm text-black dark:text-gray-400 mt-1">Real-time market data and world clocks</p>
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Real-time market data and world clocks</p>
       </div>
 
       {/* Sections in order with drag and drop */}

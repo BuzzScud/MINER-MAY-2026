@@ -71,10 +71,7 @@ function SavedProjectionsList() {
   if (selected) {
     const d = savedProjectionDate(selected);
     const savedDateLabel = d
-      ? d.toLocaleString(undefined, {
-          dateStyle: 'medium',
-          timeStyle: 'short',
-        })
+      ? d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
       : 'unknown date';
     return (
       <ReadOnlyProjectionViewer
@@ -87,98 +84,92 @@ function SavedProjectionsList() {
   }
 
   return (
-    <div className="w-full max-w-[1800px] mx-auto px-0 flex flex-col h-full min-h-0 overflow-hidden">
-      <div className="mb-4 flex-shrink-0">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-          Saved projections
-        </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-          Open a row to view the full snapshot. Delete from the list or while viewing.
-        </p>
-      </div>
-
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden flex-1 min-h-0 flex flex-col">
-        {loading ? (
-          <div className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">
-            Loading…
-          </div>
-        ) : projections.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">
-            No saved projections yet. Run a prediction on the Projection tab and click{' '}
-            <strong className="text-emerald-600 dark:text-emerald-400">Save Projection</strong>.
-          </div>
-        ) : (
-          <div className="overflow-auto flex-1 min-h-0">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700 sticky top-0">
-                <tr>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Ticker</th>
-                  <th className="px-4 py-3 text-right tabular-nums">Current</th>
-                  <th className="px-4 py-3 text-right tabular-nums">1st target</th>
-                  <th className="px-4 py-3 text-right tabular-nums">Confidence</th>
-                  <th className="px-4 py-3 text-right tabular-nums">Crystalline</th>
-                  <th className="px-4 py-3 w-12" aria-label="Actions" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {projections.map((p) => {
-                  const d = savedProjectionDate(p);
-                  const dateStr = d
-                    ? d.toLocaleString(undefined, {
-                        dateStyle: 'short',
-                        timeStyle: 'short',
-                      })
-                    : '—';
-                  return (
-                    <tr
-                      key={p.id}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors"
-                      onClick={() => setSelected(p)}
-                    >
-                      <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                        {dateStr}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-white max-w-[200px] truncate">
-                        {p.name || '—'}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-gray-800 dark:text-gray-200">
-                        {p.ticker || '—'}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-gray-900 dark:text-white">
-                        {formatCurrency(p.currentPrice)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-gray-900 dark:text-white">
-                        {formatCurrency(p.firstTargetPrice)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-gray-700 dark:text-gray-300">
-                        {p.confidence != null ? `${p.confidence}%` : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-gray-700 dark:text-gray-300">
-                        {p.crystallineScore ?? '—'}
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteById(p.id, false);
-                          }}
-                          className="p-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                          aria-label="Delete projection"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+    <div className="w-full max-w-[1800px] mx-auto flex flex-col h-full min-h-0">
+      {loading ? (
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-12 text-center text-sm text-gray-500 dark:text-gray-400">
+          Loading…
+        </div>
+      ) : projections.length === 0 ? (
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-12 text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            No saved projections yet.
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+            Switch to <span className="font-medium text-sky-500">New Projection</span>, run a prediction, and click <span className="font-medium text-emerald-500">Save</span>.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2 overflow-y-auto flex-1 min-h-0 pr-1">
+          {projections.map((p) => {
+            const d = savedProjectionDate(p);
+            const dateStr = d
+              ? d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+              : '—';
+            const pctToTarget =
+              Number.isFinite(Number(p.currentPrice)) && Number(p.currentPrice) !== 0 && Number.isFinite(Number(p.firstTargetPrice))
+                ? ((Number(p.firstTargetPrice) - Number(p.currentPrice)) / Number(p.currentPrice)) * 100
+                : null;
+            const isUp = pctToTarget != null ? pctToTarget >= 0 : true;
+            return (
+              <div
+                key={p.id}
+                onClick={() => setSelected(p)}
+                className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50 px-4 py-3 cursor-pointer transition-colors"
+              >
+                <div
+                  className="w-1 self-stretch rounded-full flex-shrink-0"
+                  style={{ backgroundColor: isUp ? '#22c55e' : '#ef4444' }}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                      {p.name || p.ticker || '—'}
+                    </span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 flex-shrink-0">
+                      {p.ticker || '—'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                    {dateStr}
+                    {p.confidence != null ? ` · ${p.confidence}% confidence` : ''}
+                    {p.crystallineScore != null ? ` · Score: ${p.crystallineScore}` : ''}
+                  </p>
+                </div>
+                <div className="flex items-center gap-4 flex-shrink-0">
+                  <div className="text-right hidden sm:block">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
+                      {formatCurrency(p.currentPrice)}
+                    </p>
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500">current</p>
+                  </div>
+                  <div className="text-right hidden sm:block">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
+                      {formatCurrency(p.firstTargetPrice)}
+                    </p>
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500">target</p>
+                  </div>
+                  {pctToTarget != null && (
+                    <span className={`text-sm font-bold tabular-nums ${isUp ? 'text-emerald-500' : 'text-red-500'}`}>
+                      {isUp ? '↑' : '↓'}{Math.abs(pctToTarget).toFixed(2)}%
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteById(p.id, false);
+                    }}
+                    className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    aria-label="Delete projection"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

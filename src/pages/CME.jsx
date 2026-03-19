@@ -181,8 +181,8 @@ function CME({ embedded = false }) {
 
   const currentLabel = CME_SYMBOLS.find((s) => s.id === symbol)?.label || symbol;
   const containerCls = embedded
-    ? 'w-full max-w-[1800px] mx-auto px-0 flex flex-col h-full min-h-0 overflow-hidden'
-    : 'w-full max-w-[1800px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden';
+    ? 'w-full max-w-[1400px] mx-auto px-0 flex flex-col h-full min-h-0 overflow-hidden'
+    : 'w-full max-w-[1400px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden';
 
   useEffect(() => {
     if (tab !== 'quotes') return;
@@ -254,16 +254,16 @@ function CME({ embedded = false }) {
   return (
     <div className={containerCls}>
       {!embedded && (
-        <nav className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4 flex-shrink-0">
+        <nav className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-4 flex-shrink-0">
           <Link to="/" className="hover:text-sky-400 dark:hover:text-sky-300 transition-colors">Dashboard</Link>
           <span>/</span>
           <span className="font-medium text-gray-900 dark:text-white">CME</span>
         </nav>
       )}
       {!embedded && (
-        <div className="text-center mb-6 flex-shrink-0">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">CME E-mini Futures</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+        <div className="text-center mb-4 flex-shrink-0">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">CME E-mini Futures</h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             NQ (Nasdaq-100) and ES (S&P 500) metrics
           </p>
         </div>
@@ -275,7 +275,7 @@ function CME({ embedded = false }) {
             key={s.id}
             type="button"
             onClick={() => selectSymbol(s.id)}
-            className={`py-2 px-4 text-sm font-semibold rounded-lg transition-colors ${
+            className={`text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors ${
               symbol === s.id
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
@@ -284,13 +284,13 @@ function CME({ embedded = false }) {
             {s.label}
           </button>
         ))}
-        <span className="text-gray-500 dark:text-gray-400 text-sm mx-2">|</span>
+        <span className="text-gray-500 dark:text-gray-400 text-xs mx-2">|</span>
         {PERIODS.map((p) => (
           <button
             key={p.value}
             type="button"
             onClick={() => setPeriod(p.value)}
-            className={`min-h-[44px] py-2.5 px-3 text-xs font-medium rounded ${
+            className={`min-h-[44px] text-xs font-semibold py-1.5 px-3 rounded-lg ${
               period === p.value
                 ? 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300'
                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -305,7 +305,7 @@ function CME({ embedded = false }) {
         <button
           type="button"
           onClick={() => setTab('overview')}
-          className={tab === 'overview' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}
+          className={`text-xs font-semibold py-1.5 px-3 rounded-lg ${tab === 'overview' ? 'text-sky-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
         >
           Overview
         </button>
@@ -313,7 +313,7 @@ function CME({ embedded = false }) {
         <button
           type="button"
           onClick={() => setTab('quotes')}
-          className={tab === 'quotes' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}
+          className={`text-xs font-semibold py-1.5 px-3 rounded-lg ${tab === 'quotes' ? 'text-sky-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
         >
           Quotes
         </button>
@@ -321,7 +321,7 @@ function CME({ embedded = false }) {
         <button
           type="button"
           onClick={() => setTab('calendar')}
-          className={tab === 'calendar' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}
+          className={`text-xs font-semibold py-1.5 px-3 rounded-lg ${tab === 'calendar' ? 'text-sky-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
         >
           Calendar
         </button>
@@ -331,82 +331,82 @@ function CME({ embedded = false }) {
         <div className="flex items-center justify-center py-12 text-gray-500 dark:text-gray-400">Loading…</div>
       )}
       {tab === 'overview' && error && !data && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-300">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2.5 text-red-700 dark:text-red-300">
           {error}
         </div>
       )}
       {tab === 'overview' && data && (
-        <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto">
+        <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-y-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Last Price</p>
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Last Price</p>
               <p className="text-lg font-bold text-gray-900 dark:text-white">
                 {data.lastPrice != null ? data.lastPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
               </p>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Change</p>
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Change</p>
               <p className={`text-lg font-bold ${data.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {data.change != null
                   ? `${data.change >= 0 ? '+' : ''}${data.change.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                   : '—'}
               </p>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Change %</p>
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Change %</p>
               <p className={`text-lg font-bold ${data.changePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {data.changePercent != null
                   ? `${data.changePercent >= 0 ? '+' : ''}${data.changePercent.toFixed(2)}%`
                   : '—'}
               </p>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Open</p>
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Open</p>
               <p className="text-lg font-bold text-gray-900 dark:text-white">
                 {data.open != null ? data.open.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
               </p>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">High</p>
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">High</p>
               <p className="text-lg font-bold text-gray-900 dark:text-white">
                 {data.high != null ? data.high.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
               </p>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Low</p>
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Low</p>
               <p className="text-lg font-bold text-gray-900 dark:text-white">
                 {data.low != null ? data.low.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
               </p>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Previous Close</p>
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Previous Close</p>
               <p className="text-lg font-bold text-gray-900 dark:text-white">
                 {data.previousClose != null ? data.previousClose.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
               </p>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Volume</p>
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Volume</p>
               <p className="text-lg font-bold text-gray-900 dark:text-white">
                 {data.volume != null ? data.volume.toLocaleString() : '—'}
               </p>
             </div>
             {data.fiftyTwoWeekHigh != null && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">52W High</p>
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">52W High</p>
                 <p className="text-lg font-bold text-gray-900 dark:text-white">{data.fiftyTwoWeekHigh.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
             )}
             {data.fiftyTwoWeekLow != null && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">52W Low</p>
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">52W Low</p>
                 <p className="text-lg font-bold text-gray-900 dark:text-white">{data.fiftyTwoWeekLow.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
             )}
           </div>
 
           {data.chartData && data.chartData.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 flex-1 min-h-[280px]">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 flex-1 min-h-[280px]">
+              <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
                 {currentLabel} Price
               </h2>
               <div className="h-64">
@@ -436,7 +436,7 @@ function CME({ embedded = false }) {
             </div>
           )}
           {quotesError && (
-            <div className="mb-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-red-700 dark:text-red-300 text-xs">
+            <div className="mb-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2.5 text-red-700 dark:text-red-300 text-xs">
               {quotesError}
             </div>
           )}

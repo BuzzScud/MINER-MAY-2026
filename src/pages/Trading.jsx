@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import Projection from './Projection';
 import FibStuff from './FibStuff';
-import SavedProjectionsList from '../components/SavedProjectionsList';
 import { TradingBotView } from '../features/trading-bot/TradingBotView';
 import { useStorage } from '../utils/storage';
 import { STORAGE_KEYS } from '../utils/storageKeys';
@@ -92,7 +90,7 @@ function CandlestickChartWrapper({ chartType, candlestickData, chartData, symbol
       }
       return (
         <div className="absolute inset-0 flex items-center justify-center">
-          <p className="text-red-500 dark:text-red-400 text-sm">Unable to display candlestick chart. Showing line chart instead.</p>
+          <p className="text-red-500 dark:text-red-400 text-xs">Unable to display candlestick chart. Showing line chart instead.</p>
         </div>
       );
     }
@@ -113,8 +111,6 @@ function CandlestickChartWrapper({ chartType, candlestickData, chartData, symbol
 }
 
 const CHARTS_TAB = 'charts';
-const PROJECTION_TAB = 'projection';
-const SAVED_PROJECTIONS_TAB = 'saved';
 const FIB_STUFF_TAB = 'fib';
 const TRADING_BOT_TAB = 'bot';
 
@@ -122,15 +118,11 @@ function Trading() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const tab =
-    tabParam === PROJECTION_TAB
-      ? PROJECTION_TAB
-      : tabParam === SAVED_PROJECTIONS_TAB
-        ? SAVED_PROJECTIONS_TAB
-        : tabParam === FIB_STUFF_TAB
-          ? FIB_STUFF_TAB
-          : tabParam === TRADING_BOT_TAB
-            ? TRADING_BOT_TAB
-            : CHARTS_TAB;
+    tabParam === FIB_STUFF_TAB
+      ? FIB_STUFF_TAB
+      : tabParam === TRADING_BOT_TAB
+        ? TRADING_BOT_TAB
+        : CHARTS_TAB;
   const setTab = (t) => setSearchParams(t === CHARTS_TAB ? {} : { tab: t });
   const { getItem, setItem } = useStorage();
   const [symbol, setSymbol] = useState('QQQ');
@@ -694,8 +686,8 @@ function Trading() {
   }, []);
 
   return (
-    <div className="w-full max-w-[1800px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden">
-      <nav className="flex items-center gap-2 text-sm text-black dark:text-gray-400 mb-4 flex-shrink-0">
+    <div className="w-full max-w-[1400px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden">
+      <nav className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-4 flex-shrink-0">
         <Link to="/" className="hover:text-sky-400 dark:hover:text-sky-300 transition-colors">Dashboard</Link>
         <span>/</span>
         <span className="font-medium text-gray-900 dark:text-white">Charts</span>
@@ -712,7 +704,7 @@ function Trading() {
           aria-controls="tabpanel-charts"
           id="tab-charts"
           onClick={() => setTab(CHARTS_TAB)}
-          className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+          className={`flex-shrink-0 px-3 py-1.5 text-xs font-semibold border-b-2 transition-colors ${
             tab === CHARTS_TAB
               ? 'border-indigo-600 text-gray-900 dark:text-white'
               : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
@@ -723,41 +715,11 @@ function Trading() {
         <button
           type="button"
           role="tab"
-          aria-selected={tab === PROJECTION_TAB}
-          aria-controls="tabpanel-projection"
-          id="tab-projection"
-          onClick={() => setTab(PROJECTION_TAB)}
-          className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-            tab === PROJECTION_TAB
-              ? 'border-indigo-600 text-gray-900 dark:text-white'
-              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-          }`}
-        >
-          Projection
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === SAVED_PROJECTIONS_TAB}
-          aria-controls="tabpanel-saved-projections"
-          id="tab-saved-projections"
-          onClick={() => setTab(SAVED_PROJECTIONS_TAB)}
-          className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-            tab === SAVED_PROJECTIONS_TAB
-              ? 'border-indigo-600 text-gray-900 dark:text-white'
-              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-          }`}
-        >
-          Saved
-        </button>
-        <button
-          type="button"
-          role="tab"
           aria-selected={tab === FIB_STUFF_TAB}
           aria-controls="tabpanel-fib"
           id="tab-fib"
           onClick={() => setTab(FIB_STUFF_TAB)}
-          className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+          className={`flex-shrink-0 px-3 py-1.5 text-xs font-semibold border-b-2 transition-colors ${
             tab === FIB_STUFF_TAB
               ? 'border-indigo-600 text-gray-900 dark:text-white'
               : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
@@ -772,7 +734,7 @@ function Trading() {
           aria-controls="tabpanel-trading-bot"
           id="tab-trading-bot"
           onClick={() => setTab(TRADING_BOT_TAB)}
-          className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+          className={`flex-shrink-0 px-3 py-1.5 text-xs font-semibold border-b-2 transition-colors ${
             tab === TRADING_BOT_TAB
               ? 'border-indigo-600 text-gray-900 dark:text-white'
               : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
@@ -781,25 +743,7 @@ function Trading() {
           Trading Bot
         </button>
       </div>
-      {tab === PROJECTION_TAB ? (
-        <div
-          id="tabpanel-projection"
-          role="tabpanel"
-          aria-labelledby="tab-projection"
-          className="flex-1 min-h-0 overflow-y-auto"
-        >
-          <Projection embedded />
-        </div>
-      ) : tab === SAVED_PROJECTIONS_TAB ? (
-        <div
-          id="tabpanel-saved-projections"
-          role="tabpanel"
-          aria-labelledby="tab-saved-projections"
-          className="flex-1 min-h-0 overflow-hidden"
-        >
-          <SavedProjectionsList />
-        </div>
-      ) : tab === FIB_STUFF_TAB ? (
+      {tab === FIB_STUFF_TAB ? (
         <div
           id="tabpanel-fib"
           role="tabpanel"
@@ -824,17 +768,17 @@ function Trading() {
           aria-labelledby="tab-charts"
           className="flex-1 min-h-0 overflow-auto flex flex-col"
         >
-      <div className="text-center mb-6 flex-shrink-0">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+      <div className="text-center mb-4 flex-shrink-0">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
           Charts
         </h1>
-        <p className="text-sm text-black dark:text-gray-400">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
           Real-time stock market data and analysis
         </p>
       </div>
 
       {/* Input Controls - Compact Row */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-4 flex-shrink-0">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 mb-4 flex-shrink-0">
         <div className="flex flex-wrap items-end gap-3">
           {/* Symbol Input */}
           <div className="flex-1 min-w-0 sm:min-w-[160px] relative">
@@ -862,7 +806,7 @@ function Trading() {
                   setTimeout(() => setShowRecentSearches(false), 200);
                 }}
                 placeholder="AAPL, TSLA, MSFT"
-                className="w-full px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-colors"
+                className="w-full text-xs py-1.5 px-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-colors"
               />
               {symbol && (
                 <button
@@ -883,7 +827,7 @@ function Trading() {
               {/* Recent Searches Dropdown */}
               {showRecentSearches && recentSearches.length > 0 && !loading && (
                 <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-32 overflow-y-auto">
-                  <div className="px-2 py-1 text-xs font-semibold text-black dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
+                  <div className="px-2 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
                     Recent
                   </div>
                   {recentSearches.map((searchKey) => {
@@ -893,10 +837,10 @@ function Trading() {
                         key={searchKey}
                         type="button"
                         onClick={() => handleRecentSearch(searchKey)}
-                        className="w-full px-2 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-between transition-colors text-sm"
+                        className="w-full px-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-between transition-colors text-xs font-semibold rounded-lg"
                       >
                         <span className="font-medium text-gray-900 dark:text-white">{sym}</span>
-                        <span className="text-xs text-black dark:text-gray-400">{int}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{int}</span>
                       </button>
                     );
                   })}
@@ -910,11 +854,11 @@ function Trading() {
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
               Interval
             </label>
-            <div className="flex items-center gap-1 text-sm">
+            <div className="flex items-center gap-1 text-xs">
               <button
                 type="button"
                 onClick={() => handleIntervalChange('1D')}
-                className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2 ${interval === '1D' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+                className={`inline-flex items-center justify-center text-xs font-semibold py-1.5 px-3 rounded-lg ${interval === '1D' ? 'text-sky-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
               >
                 1D
               </button>
@@ -922,7 +866,7 @@ function Trading() {
               <button
                 type="button"
                 onClick={() => handleIntervalChange('1H')}
-                className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2 ${interval === '1H' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+                className={`inline-flex items-center justify-center text-xs font-semibold py-1.5 px-3 rounded-lg ${interval === '1H' ? 'text-sky-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
               >
                 1H
               </button>
@@ -934,7 +878,7 @@ function Trading() {
             type="button"
             onClick={handleSearch}
             disabled={loading || !symbol || !symbol.trim()}
-            className="min-h-[44px] px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm hover:shadow transition-all disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+            className="py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm hover:shadow transition-all disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
           >
             {loading ? (
               <>
@@ -955,23 +899,23 @@ function Trading() {
         {/* Market Data Summary - Shows when data is loaded */}
         {chartData && (
           <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
               <div className="flex items-center gap-1">
-                <span className="text-black dark:text-gray-400">Symbol:</span>
+                <span className="text-gray-500 dark:text-gray-400">Symbol:</span>
                 <span className="font-bold text-gray-900 dark:text-white">{symbol}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-black dark:text-gray-400">Current:</span>
+                <span className="text-gray-500 dark:text-gray-400">Current:</span>
                 <span className="font-semibold text-gray-900 dark:text-white">${chartData?.currentPrice?.toFixed(2) || 'N/A'}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-black dark:text-gray-400">Change:</span>
+                <span className="text-gray-500 dark:text-gray-400">Change:</span>
                 <span className={`font-semibold ${chartData?.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {chartData?.change >= 0 ? '+' : ''}${chartData?.change?.toFixed(2) || '0.00'} ({chartData?.changePercent >= 0 ? '+' : ''}{chartData?.changePercent?.toFixed(2) || '0.00'}%)
                 </span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-black dark:text-gray-400">Interval:</span>
+                <span className="text-gray-500 dark:text-gray-400">Interval:</span>
                 <span className="font-semibold text-sky-400">{currentInterval || 'N/A'}</span>
               </div>
               {lastRefresh && (
@@ -979,7 +923,7 @@ function Trading() {
                   <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span className="text-black dark:text-gray-400 text-[10px]">
+                  <span className="text-gray-500 dark:text-gray-400 text-[10px]">
                     {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
@@ -1002,7 +946,7 @@ function Trading() {
         )}
 
         {error && (
-          <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded text-xs flex items-center gap-1.5">
+          <div className="mt-2 px-3 py-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg text-xs flex items-center gap-1.5">
             <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
             </svg>
@@ -1014,16 +958,16 @@ function Trading() {
       {/* Main Content - Charts */}
       {!chartData && !loading ? (
         /* Initial State - Before Search */
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 text-center flex-1">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 text-center flex-1">
           <div className="max-w-md mx-auto">
             <svg className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
             </svg>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Enter a Symbol to Get Started</h3>
-            <p className="text-sm text-black dark:text-gray-400 mb-4">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Enter a Symbol to Get Started</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
               Search for a stock symbol to view real-time price charts and trading volume.
             </p>
-            <div className="flex flex-wrap justify-center gap-2">
+            <div className="flex flex-wrap justify-center gap-3">
               {['AAPL', 'TSLA', 'MSFT', 'QQQ', 'SPY', 'NVDA'].map(s => (
                 <button
                   key={s}
@@ -1031,7 +975,7 @@ function Trading() {
                     setSymbol(s);
                     setTimeout(() => handleSearch(), 100);
                   }}
-                  className="min-h-[44px] px-3 py-2.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-sky-400 transition-colors"
+                  className="text-xs font-semibold py-1.5 px-3 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-sky-400 transition-colors"
                 >
                   {s}
                 </button>
@@ -1042,15 +986,15 @@ function Trading() {
       ) : (
         <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-hidden">
           {/* Price Chart Section */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 overflow-hidden flex flex-col min-h-0" style={{ flex: '1 1 60%' }}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 overflow-hidden flex flex-col min-h-0" style={{ flex: '1 1 60%' }}>
             <div className="pb-2 mb-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-400 flex items-center gap-1.5">
+              <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
                 <svg className="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
                 </svg>
                 Price Chart
                 {symbol && (
-                  <span className="text-xs font-normal text-black dark:text-gray-400 ml-1">
+                  <span className="text-[10px] font-normal text-gray-500 dark:text-gray-400 ml-1">
                     ({symbol.toUpperCase()})
                   </span>
                 )}
@@ -1066,7 +1010,7 @@ function Trading() {
                         console.error('Error switching to line chart:', error);
                       }
                     }}
-                    className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2 ${chartType === 'line' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+                    className={`inline-flex items-center justify-center text-xs font-semibold py-1.5 px-3 rounded-lg ${chartType === 'line' ? 'text-sky-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
                   >
                     Line
                   </button>
@@ -1075,7 +1019,7 @@ function Trading() {
                     type="button"
                     onClick={() => setChartType('candlestick')}
                     disabled={!candlestickData?.datasets?.[0]?.data?.length}
-                    className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2 ${chartType === 'candlestick' ? 'text-sky-400' : 'text-black dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                    className={`inline-flex items-center justify-center text-xs font-semibold py-1.5 px-3 rounded-lg ${chartType === 'candlestick' ? 'text-sky-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'} disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     Candlestick
                   </button>
@@ -1090,7 +1034,7 @@ function Trading() {
                       <div className="absolute inset-0 bg-white/90 dark:bg-gray-800/90 z-10 flex items-center justify-center backdrop-blur-sm rounded">
                         <div className="text-center">
                           <div className="animate-spin rounded-full h-8 w-8 border-2 border-sky-200 dark:border-sky-800 border-t-sky-400 mx-auto"></div>
-                          <p className="text-xs text-black dark:text-gray-400 mt-2">Updating...</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Updating...</p>
                         </div>
                       </div>
                     )}
@@ -1108,8 +1052,8 @@ function Trading() {
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
                       <div className="animate-spin rounded-full h-12 w-12 border-4 border-sky-200 dark:border-sky-800 border-t-sky-400 mx-auto mb-4"></div>
-                      <p className="text-gray-600 dark:text-gray-400 font-medium text-sm">Loading chart data...</p>
-                      <p className="text-xs text-black dark:text-gray-400 mt-1">Please wait</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Loading chart data...</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Please wait</p>
                     </div>
                   </div>
                 ) : (
@@ -1118,8 +1062,8 @@ function Trading() {
                       <svg className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                       </svg>
-                      <p className="text-sm text-black dark:text-gray-400 font-medium mb-1">No chart data available</p>
-                      <p className="text-xs text-black dark:text-gray-400">Please try searching again</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">No chart data available</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Please try searching again</p>
                     </div>
                   </div>
                 )}
@@ -1128,9 +1072,9 @@ function Trading() {
           </div>
 
           {/* Volume Chart Section */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 overflow-hidden flex flex-col min-h-0" style={{ flex: '1 1 40%' }}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5 overflow-hidden flex flex-col min-h-0" style={{ flex: '1 1 40%' }}>
             <div className="pb-2 mb-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-400 flex items-center gap-1.5">
+              <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
                 <svg className="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
@@ -1145,7 +1089,7 @@ function Trading() {
                       <div className="absolute inset-0 bg-white/80 dark:bg-gray-800/80 z-10 flex items-center justify-center backdrop-blur-sm rounded">
                         <div className="text-center">
                           <div className="animate-spin rounded-full h-8 w-8 border-2 border-sky-200 dark:border-sky-800 border-t-sky-400 mx-auto"></div>
-                          <p className="text-xs text-black dark:text-gray-400 mt-2">Updating...</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Updating...</p>
                         </div>
                       </div>
                     )}
@@ -1160,7 +1104,7 @@ function Trading() {
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
                       <div className="animate-spin rounded-full h-10 w-10 border-3 border-green-200 border-t-green-600 mx-auto mb-3"></div>
-                      <p className="text-xs text-black dark:text-gray-400">Loading volume data...</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Loading volume data...</p>
                     </div>
                   </div>
                 ) : (
@@ -1169,7 +1113,7 @@ function Trading() {
                       <svg className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                       </svg>
-                      <p className="text-xs text-black dark:text-gray-400">No volume data available</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">No volume data available</p>
                     </div>
                   </div>
                 )}

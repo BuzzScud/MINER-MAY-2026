@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Trading from './pages/Trading';
+import Projection from './pages/Projection';
 import Checklist from './pages/Checklist';
 import Settings from './pages/Settings';
 import EconomicCalendar from './pages/EconomicCalendar';
@@ -86,7 +87,7 @@ function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="trading" element={<Trading />} />
               <Route path="checklist" element={<Checklist />} />
-              <Route path="projection" element={<Navigate to="/trading?tab=projection" replace />} />
+              <Route path="projection" element={<Projection />} />
               <Route path="calendar" element={<EconomicCalendar />} />
               <Route path="fib-stuff" element={<Navigate to="/trading?tab=fib" replace />} />
               <Route path="budget-tracker" element={<BudgetTracker />} />

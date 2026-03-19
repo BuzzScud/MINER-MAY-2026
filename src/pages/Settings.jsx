@@ -20,11 +20,11 @@ const TABS = [
 
 function Panel({ title, children, actions }) {
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5">
       {(title || actions) && (
         <div className="flex items-center justify-between gap-4 mb-3">
           {title && (
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-black dark:text-gray-400">
+            <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               {title}
             </h2>
           )}
@@ -62,7 +62,7 @@ function Select({ value, onChange, options, ariaLabel }) {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent min-w-[140px]"
+      className="text-xs py-1.5 px-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent min-w-[140px]"
       aria-label={ariaLabel}
     >
       {options.map((opt) => (
@@ -74,7 +74,7 @@ function Select({ value, onChange, options, ariaLabel }) {
 
 function SettingRow({ label, description, tag, children }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 p-3">
+    <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 px-3 py-2.5">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-gray-900 dark:text-white">{label}</span>
@@ -95,14 +95,14 @@ function SettingRow({ label, description, tag, children }) {
 
 function ApiKeyField({ label, value, onChange, visible, onToggleVisibility, hint, linkHref, linkText }) {
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 p-3 space-y-2">
+    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 px-3 py-2.5 space-y-2">
       <label className="block text-sm font-medium text-gray-900 dark:text-white">{label}</label>
       <div className="relative">
         <input
           type={visible ? 'text' : 'password'}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full px-3 py-2 pr-10 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all font-mono"
+          className="w-full text-xs py-1.5 px-2.5 pr-10 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all font-mono"
           placeholder={`Enter ${label.toLowerCase()}`}
         />
         <button
@@ -309,7 +309,7 @@ function ApiKeysTab({ showSaveStatus }) {
           <button
             type="button"
             onClick={handleSave}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-sky-600 text-white hover:bg-sky-700 transition-colors"
+            className="text-xs font-semibold py-1.5 px-3 rounded-lg bg-sky-600 text-white hover:bg-sky-700 transition-colors"
           >
             Save Keys
           </button>
@@ -412,7 +412,7 @@ function DataTab({ showSaveStatus }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
       <Panel title="Refresh Interval">
         <div className="space-y-3">
           <div className="flex items-baseline justify-between">
@@ -443,7 +443,7 @@ function DataTab({ showSaveStatus }) {
               value={newSymbol}
               onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === 'Enter' && handleAddSymbol()}
-              className="flex-1 min-w-0 px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+              className="flex-1 min-w-0 text-xs py-1.5 px-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent"
               placeholder="e.g. AAPL"
               maxLength="10"
             />
@@ -451,7 +451,7 @@ function DataTab({ showSaveStatus }) {
               type="button"
               onClick={handleAddSymbol}
               disabled={!newSymbol.trim() || defaultSymbols.includes(newSymbol.toUpperCase().trim())}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+              className="text-xs font-semibold py-1.5 px-3 rounded-lg bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
             >
               Add
             </button>
@@ -678,7 +678,7 @@ function PrivacyTab({ showSaveStatus }) {
 
   return (
     <Panel title="Privacy & Data">
-      <div className="rounded-lg border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-900/20 p-3 mb-4 text-xs text-sky-800 dark:text-sky-200">
+      <div className="rounded-lg border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-900/20 px-3 py-2.5 mb-4 text-xs text-sky-800 dark:text-sky-200">
         <p className="font-medium mb-1">Data Persistence</p>
         <p className="text-sky-700 dark:text-sky-300">
           Data is stored in your browser. Use the same URL each time (e.g. http://localhost:5173) so your data persists. Avoid incognito/private mode; localhost and 127.0.0.1 are different origins.
@@ -692,7 +692,7 @@ function PrivacyTab({ showSaveStatus }) {
           <button
             type="button"
             onClick={handleClearCache}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="text-xs font-semibold py-1.5 px-3 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             Clear Cache
           </button>
@@ -704,7 +704,7 @@ function PrivacyTab({ showSaveStatus }) {
           <button
             type="button"
             onClick={handleExportSettings}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="text-xs font-semibold py-1.5 px-3 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             Export
           </button>
@@ -716,7 +716,7 @@ function PrivacyTab({ showSaveStatus }) {
           <button
             type="button"
             onClick={handleImportSettings}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="text-xs font-semibold py-1.5 px-3 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             Import
           </button>
@@ -795,8 +795,8 @@ function Settings() {
   }, [setTab, showSaveStatus, token]);
 
   return (
-    <div className="w-full max-w-[1800px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden">
-      <nav className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2 flex-shrink-0">
+    <div className="w-full max-w-[1400px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden">
+      <nav className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-2 flex-shrink-0">
         <Link to="/" className="hover:text-sky-400 dark:hover:text-sky-300 transition-colors">Dashboard</Link>
         <span>/</span>
         <span className="font-medium text-gray-900 dark:text-white">Settings</span>
@@ -810,8 +810,8 @@ function Settings() {
 
       <header className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-shrink-0">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             Preferences, API keys, and app configuration
           </p>
         </div>
@@ -831,7 +831,7 @@ function Settings() {
           <button
             type="button"
             onClick={handleResetDefaults}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            className="text-xs font-semibold py-1.5 px-3 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
           >
             Reset All
           </button>
@@ -858,7 +858,7 @@ function Settings() {
               if (e.key === 'ArrowRight' && idx < visibleTabs.length - 1) setTab(visibleTabs[idx + 1].id);
               if (e.key === 'ArrowLeft' && idx > 0) setTab(visibleTabs[idx - 1].id);
             }}
-            className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
+            className={`text-xs font-semibold py-1.5 px-3 rounded-t-lg transition-colors ${
               activeTab === tab.id
                 ? 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 border-b-transparent dark:border-b-transparent -mb-px text-sky-600 dark:text-sky-400'
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/50'

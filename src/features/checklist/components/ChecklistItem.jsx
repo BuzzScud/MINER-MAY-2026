@@ -18,7 +18,7 @@ export function ChecklistItem({
   onRemove,
 }) {
   return (
-    <div className="group flex items-start gap-2 text-sm text-gray-700 dark:text-gray-200">
+    <div className="group flex items-start gap-2 text-xs text-gray-700 dark:text-gray-200">
       <input
         type="checkbox"
         checked={checked}
@@ -43,7 +43,7 @@ export function ChecklistItem({
               }
             }}
             maxLength={100}
-            className="block w-full px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+            className="block w-full px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
             autoFocus
             aria-label="Edit item label"
           />

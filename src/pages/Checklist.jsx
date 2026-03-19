@@ -89,8 +89,8 @@ export default function Checklist() {
 
   if (loading) {
     return (
-      <div className="w-full max-w-[1800px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden">
-        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4 flex-shrink-0">
+      <div className="w-full max-w-[1400px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden">
+        <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-4 flex-shrink-0">
           <span className="font-medium text-gray-900 dark:text-white">Loading checklist…</span>
         </div>
       </div>
@@ -98,8 +98,8 @@ export default function Checklist() {
   }
 
   return (
-    <div className="w-full max-w-[1800px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden">
-      <nav className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4 flex-shrink-0">
+    <div className="w-full max-w-[1400px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden">
+      <nav className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-4 flex-shrink-0">
         <Link to="/" className="hover:text-sky-400 dark:hover:text-sky-300 transition-colors">
           Dashboard
         </Link>
@@ -132,9 +132,9 @@ export default function Checklist() {
         </p>
       )}
 
-      <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0 overflow-hidden">
-        <div className="flex-1 min-h-0 overflow-auto flex flex-col gap-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="flex flex-col lg:flex-row gap-3 flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-auto flex flex-col gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {visibleCategories.map((cat) => {
               const categoryPresetIds = cat.items.map((i) => i.id);
               const categoryCustomIds = customItems

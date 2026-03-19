@@ -14,6 +14,7 @@ const ALL_PAGES = [
   { path: '/', label: 'Dashboard' },
   { path: '/calendar', label: 'Economic Calendar' },
   { path: '/trading', label: 'Charts' },
+  { path: '/projection', label: 'Projection' },
   { path: '/checklist', label: 'Checklist' },
   { path: '/sentiment', label: 'Sentiment' },
   { path: '/budget-tracker', label: 'Budget Tracker' },
@@ -38,6 +39,11 @@ const PAGE_ICONS = {
   '/trading': (
     <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+    </svg>
+  ),
+  '/projection': (
+    <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
     </svg>
   ),
   '/checklist': (
@@ -76,7 +82,7 @@ const PAGE_ICONS = {
 function getDefaultSections() {
   return [
     { id: 'dashboard', label: 'Dashboard', pagePaths: ['/', '/calendar'] },
-    { id: 'markets', label: 'Markets', pagePaths: ['/sentiment', '/trading', '/checklist'] },
+    { id: 'markets', label: 'Markets', pagePaths: ['/sentiment', '/trading', '/projection', '/checklist'] },
     { id: 'crypto', label: 'Crypto', pagePaths: ['/miner'] },
     { id: 'utilities', label: 'Utilities', pagePaths: ['/budget-tracker'] },
     { id: 'settings', label: 'Settings', pagePaths: ['/api-monitor', '/settings'] },

@@ -390,19 +390,19 @@ function FibStuff({ embedded = false }) {
     : null;
 
   return (
-    <div className={`w-full max-w-[1800px] mx-auto flex flex-col h-full min-h-0 overflow-hidden ${embedded ? '' : 'px-4'}`}>
+    <div className={`w-full max-w-[1400px] mx-auto flex flex-col h-full min-h-0 overflow-hidden ${embedded ? '' : 'px-4'}`}>
       {!embedded && (
         <>
-          <nav className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2 flex-shrink-0">
+          <nav className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-2 flex-shrink-0">
             <Link to="/" className="hover:text-sky-400 dark:hover:text-sky-300 transition-colors">Dashboard</Link>
             <span>/</span>
             <span className="font-medium text-gray-900 dark:text-white">Fib Stuff</span>
           </nav>
-          <div className="text-center mb-3 flex-shrink-0">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+          <div className="text-center mb-4 flex-shrink-0">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
               Fib Stuff
             </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Fibonacci retracement and extension levels with real-time market data
             </p>
           </div>
@@ -415,8 +415,8 @@ function FibStuff({ embedded = false }) {
         <div className="lg:w-80 flex-shrink-0 lg:flex-shrink-0 flex flex-col min-h-0 order-2 lg:order-1">
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-3 pr-1">
             {/* Controls card */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+              <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
                 Market Data
               </h2>
               <div className="space-y-2">
@@ -427,7 +427,7 @@ function FibStuff({ embedded = false }) {
                   onChange={(e) => setSymbol(e.target.value.toUpperCase())}
                   onKeyDown={handleKeyDown}
                   placeholder="Symbol (e.g. AAPL, QQQ)"
-                  className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  className="w-full text-xs py-1.5 px-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-600 dark:text-gray-400">Precision:</span>
@@ -437,7 +437,7 @@ function FibStuff({ embedded = false }) {
                         key={p}
                         type="button"
                         onClick={() => setPrecision(p)}
-                        className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+                        className={`text-xs font-semibold py-1.5 px-3 rounded-lg transition-all ${
                           precision === p
                             ? 'bg-blue-600 text-white'
                             : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -452,7 +452,7 @@ function FibStuff({ embedded = false }) {
                   type="button"
                   onClick={handleCalculate}
                   disabled={loading}
-                  className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1.5 px-3 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {loading ? (
                     <>
@@ -470,8 +470,8 @@ function FibStuff({ embedded = false }) {
             </div>
 
             {/* Current market data */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+              <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
                 Current Data
               </h2>
               {error && (
@@ -509,8 +509,8 @@ function FibStuff({ embedded = false }) {
 
             {/* Sentiment indicator — price vs Fib range (0=low, 1=high) */}
             {fibData && !error && sentiment && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+                <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
                   Sentiment Indicator
                 </h2>
                 <div className={`rounded-lg p-2.5 ${sentiment.bg} border border-gray-200/50 dark:border-gray-600/50`}>
@@ -535,14 +535,14 @@ function FibStuff({ embedded = false }) {
                   <button
                     type="button"
                     onClick={() => setFibTab('positive')}
-                    className={`px-2 py-1 rounded text-xs font-medium transition-colors ${fibTab === 'positive' ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                    className={`text-xs py-1.5 px-3 rounded-lg font-medium transition-colors ${fibTab === 'positive' ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                   >
                     Positive
                   </button>
                   <button
                     type="button"
                     onClick={() => setFibTab('negative')}
-                    className={`px-2 py-1 rounded text-xs font-medium transition-colors ${fibTab === 'negative' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                    className={`text-xs py-1.5 px-3 rounded-lg font-medium transition-colors ${fibTab === 'negative' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                   >
                     Negative
                   </button>
@@ -588,7 +588,7 @@ function FibStuff({ embedded = false }) {
           {fibData && !error ? (
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col flex-1 min-h-0">
               <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex-shrink-0">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300">
                   Price Chart — {symbol}
                 </h2>
               </div>
@@ -598,7 +598,7 @@ function FibStuff({ embedded = false }) {
             </div>
           ) : (
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col flex-1 min-h-[400px] lg:min-h-0">
-              <div className="flex-1 flex items-center justify-center p-6">
+              <div className="flex-1 flex items-center justify-center px-3 py-2.5">
                 <div className="text-center text-gray-500 dark:text-gray-400">
                   <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
