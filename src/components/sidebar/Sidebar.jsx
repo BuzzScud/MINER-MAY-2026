@@ -12,9 +12,9 @@ const SIDEBAR_NAV_KEY = STORAGE_KEYS.SIDEBAR_NAV;
 
 const ALL_PAGES = [
   { path: '/', label: 'Dashboard' },
-  { path: '/notes', label: 'Notes' },
   { path: '/calendar', label: 'Economic Calendar' },
   { path: '/trading', label: 'Charts' },
+  { path: '/checklist', label: 'Checklist' },
   { path: '/sentiment', label: 'Sentiment' },
   { path: '/budget-tracker', label: 'Budget Tracker' },
   { path: '/miner', label: 'Miner' },
@@ -30,11 +30,6 @@ const PAGE_ICONS = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
     </svg>
   ),
-  '/notes': (
-    <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-    </svg>
-  ),
   '/calendar': (
     <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -43,6 +38,11 @@ const PAGE_ICONS = {
   '/trading': (
     <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+    </svg>
+  ),
+  '/checklist': (
+    <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 11l3-3 3 3m-8 4h8M9 5h6a2 2 0 012 2v10a2 2 0 01-2 2H9l-3 2v-2H7a2 2 0 01-2-2V7a2 2 0 012-2z" />
     </svg>
   ),
   '/sentiment': (
@@ -75,8 +75,8 @@ const PAGE_ICONS = {
 
 function getDefaultSections() {
   return [
-    { id: 'dashboard', label: 'Dashboard', pagePaths: ['/', '/notes', '/calendar'] },
-    { id: 'markets', label: 'Markets', pagePaths: ['/sentiment', '/trading'] },
+    { id: 'dashboard', label: 'Dashboard', pagePaths: ['/', '/calendar'] },
+    { id: 'markets', label: 'Markets', pagePaths: ['/sentiment', '/trading', '/checklist'] },
     { id: 'crypto', label: 'Crypto', pagePaths: ['/miner'] },
     { id: 'utilities', label: 'Utilities', pagePaths: ['/budget-tracker'] },
     { id: 'settings', label: 'Settings', pagePaths: ['/api-monitor', '/settings'] },

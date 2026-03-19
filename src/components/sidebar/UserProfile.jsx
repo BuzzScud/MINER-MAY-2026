@@ -4,16 +4,33 @@ import { Link } from 'react-router-dom';
 import { useStorage } from '../../utils/storage';
 import { STORAGE_KEYS } from '../../utils/storageKeys';
 
-function UserProfile({ user, onLogout }) {
-  const { getItem, setItem } = useStorage();
-  const [userData, setUserData] = useState({
+function getInitialUserData(user) {
+  const fallback = {
     name: 'John Doe',
     email: 'john.doe@example.com',
     dob: '',
     phone: '',
     location: '',
     bio: '',
-  });
+  };
+  if (!user || typeof user !== 'object') return fallback;
+  const nameFromUser =
+    user.name ||
+    user.full_name ||
+    user.fullName ||
+    user.username ||
+    fallback.name;
+  const emailFromUser = user.email || fallback.email;
+  return {
+    ...fallback,
+    name: String(nameFromUser),
+    email: String(emailFromUser),
+  };
+}
+
+function UserProfile({ user, onLogout }) {
+  const { getItem, setItem } = useStorage();
+  const [userData, setUserData] = useState(() => getInitialUserData(user));
 
   const [isEditing, setIsEditing] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -22,21 +39,52 @@ function UserProfile({ user, onLogout }) {
   const [showSavedFeedback, setShowSavedFeedback] = useState(false);
   const profileRef = useRef(null);
   const hasUserSavedOnceRef = useRef(false);
+  const hasLoadedFromStorageRef = useRef(false);
 
   useEffect(() => {
+    let cancelled = false;
     getItem(STORAGE_KEYS.USER_PROFILE).then((parsed) => {
+      if (cancelled) return;
       if (parsed && typeof parsed === 'object') {
+        hasLoadedFromStorageRef.current = true;
+        hasUserSavedOnceRef.current = true;
         setUserData(parsed);
         setEditForm(parsed);
+      } else if (!hasLoadedFromStorageRef.current) {
+        const initialFromUser = getInitialUserData(user);
+        setUserData(initialFromUser);
+        setEditForm(initialFromUser);
       }
     });
-  }, [getItem]);
+    return () => {
+      cancelled = true;
+    };
+  }, [getItem, user]);
 
   useEffect(() => {
     if (hasUserSavedOnceRef.current) {
       setItem(STORAGE_KEYS.USER_PROFILE, userData).catch(() => {});
     }
   }, [userData, setItem]);
+
+  useEffect(() => {
+    const handleStorage = (event) => {
+      if (event.key !== STORAGE_KEYS.USER_PROFILE || !event.newValue) return;
+      try {
+        const next = JSON.parse(event.newValue);
+        if (next && typeof next === 'object') {
+          hasLoadedFromStorageRef.current = true;
+          hasUserSavedOnceRef.current = true;
+          setUserData(next);
+          setEditForm(next);
+        }
+      } catch {
+        // ignore parse errors
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   useEffect(() => {
     const handleEscape = (event) => {

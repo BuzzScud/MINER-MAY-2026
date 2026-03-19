@@ -84,10 +84,25 @@ export function TradingBotView({ embedded = false }) {
         >
           Backtest
         </button>
-        <button type="button" onClick={() => setSettingsOpen(true)} className="ml-auto px-3 py-1.5 rounded text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600">
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
+          className="ml-auto px-3 py-1.5 rounded text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+        >
           Settings
         </button>
-        <button type="button" onClick={() => setGoLiveOpen(true)} className="px-3 py-1.5 rounded text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600">
+        <button
+          type="button"
+          onClick={() => state.setSocketEnabled((v) => !v)}
+          className="px-3 py-1.5 rounded text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+        >
+          {state.socketEnabled ? 'Disconnect bot' : 'Connect bot'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setGoLiveOpen(true)}
+          className="px-3 py-1.5 rounded text-sm font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+        >
           Go Live
         </button>
       </div>

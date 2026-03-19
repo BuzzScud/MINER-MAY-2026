@@ -29,6 +29,7 @@ export function useTradingBotState() {
   const [backtestResult, setBacktestResult] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', isError: false });
   const [backendUnreachable, setBackendUnreachable] = useState(false);
+  const [socketEnabled, setSocketEnabled] = useState(false);
   const pollRef = useRef(null);
 
   const showToast = useCallback((message, isError = false) => {
@@ -110,10 +111,11 @@ export function useTradingBotState() {
       setBacktestProgress({ show: false, pct: 0, text: '' });
       showToast('Backtest error: ' + (data?.error || 'Unknown'), true);
     },
-  });
+  }, { enabled: socketEnabled });
 
 
   useEffect(() => {
+    if (!socketEnabled) return;
     refetchState();
     try {
       api.getSettings().then((s) => setSettings(s != null && typeof s === 'object' ? s : {})).catch(() => {});
@@ -128,14 +130,15 @@ export function useTradingBotState() {
         setStrategies({ current: data?.current || 'multi_asset', options: opts });
       }).catch(() => {});
     } catch (_) {}
-  }, []);
+  }, [socketEnabled, refetchState]);
 
   useEffect(() => {
+    if (!socketEnabled) return;
     pollRef.current = setInterval(refetchState, POLL_INTERVAL_MS);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [refetchState]);
+  }, [refetchState, socketEnabled]);
 
   return {
     symbols,
@@ -169,5 +172,7 @@ export function useTradingBotState() {
     refetchState,
     connected,
     backendUnreachable,
+    socketEnabled,
+    setSocketEnabled,
   };
 }

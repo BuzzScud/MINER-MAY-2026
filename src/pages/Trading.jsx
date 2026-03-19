@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Projection from './Projection';
 import FibStuff from './FibStuff';
+import SavedProjectionsList from '../components/SavedProjectionsList';
 import { TradingBotView } from '../features/trading-bot/TradingBotView';
 import { useStorage } from '../utils/storage';
 import { STORAGE_KEYS } from '../utils/storageKeys';
@@ -113,13 +114,23 @@ function CandlestickChartWrapper({ chartType, candlestickData, chartData, symbol
 
 const CHARTS_TAB = 'charts';
 const PROJECTION_TAB = 'projection';
+const SAVED_PROJECTIONS_TAB = 'saved';
 const FIB_STUFF_TAB = 'fib';
 const TRADING_BOT_TAB = 'bot';
 
 function Trading() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const tab = tabParam === PROJECTION_TAB ? PROJECTION_TAB : tabParam === FIB_STUFF_TAB ? FIB_STUFF_TAB : tabParam === TRADING_BOT_TAB ? TRADING_BOT_TAB : CHARTS_TAB;
+  const tab =
+    tabParam === PROJECTION_TAB
+      ? PROJECTION_TAB
+      : tabParam === SAVED_PROJECTIONS_TAB
+        ? SAVED_PROJECTIONS_TAB
+        : tabParam === FIB_STUFF_TAB
+          ? FIB_STUFF_TAB
+          : tabParam === TRADING_BOT_TAB
+            ? TRADING_BOT_TAB
+            : CHARTS_TAB;
   const setTab = (t) => setSearchParams(t === CHARTS_TAB ? {} : { tab: t });
   const { getItem, setItem } = useStorage();
   const [symbol, setSymbol] = useState('QQQ');
@@ -727,6 +738,21 @@ function Trading() {
         <button
           type="button"
           role="tab"
+          aria-selected={tab === SAVED_PROJECTIONS_TAB}
+          aria-controls="tabpanel-saved-projections"
+          id="tab-saved-projections"
+          onClick={() => setTab(SAVED_PROJECTIONS_TAB)}
+          className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            tab === SAVED_PROJECTIONS_TAB
+              ? 'border-indigo-600 text-gray-900 dark:text-white'
+              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          Saved
+        </button>
+        <button
+          type="button"
+          role="tab"
           aria-selected={tab === FIB_STUFF_TAB}
           aria-controls="tabpanel-fib"
           id="tab-fib"
@@ -760,9 +786,18 @@ function Trading() {
           id="tabpanel-projection"
           role="tabpanel"
           aria-labelledby="tab-projection"
-          className="flex-1 min-h-0 overflow-hidden"
+          className="flex-1 min-h-0 overflow-y-auto"
         >
           <Projection embedded />
+        </div>
+      ) : tab === SAVED_PROJECTIONS_TAB ? (
+        <div
+          id="tabpanel-saved-projections"
+          role="tabpanel"
+          aria-labelledby="tab-saved-projections"
+          className="flex-1 min-h-0 overflow-hidden"
+        >
+          <SavedProjectionsList />
         </div>
       ) : tab === FIB_STUFF_TAB ? (
         <div

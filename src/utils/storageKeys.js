@@ -3,8 +3,6 @@
  * Use these when reading/writing so keys stay consistent and auditable.
  */
 export const STORAGE_KEYS = {
-  NOTES: 'notes',
-  NOTES_VIEW_PREFS: 'notesViewPrefs',
   SIDEBAR_NAV: 'sidebarNav',
   DARK_MODE: 'darkMode',
   DASHBOARD_SYMBOLS: 'dashboardSymbols',
@@ -31,6 +29,7 @@ export const STORAGE_KEYS = {
   BUDGET_CATEGORIES: 'budgetTracker_categories',
   BUDGET_BUDGETS: 'budgetTracker_budgets',
   BUDGET_REMINDERS: 'budgetTracker_reminders',
+  BUDGET_SETTINGS: 'budgetTracker_settings',
   BTC_MINER_ADDRESS: 'btc_miner_address',
   BTC_MINER_CONNECTION: 'btc_miner_connection',
   FIB_SYMBOL: 'fibStuffSymbol',
@@ -40,4 +39,11 @@ export const STORAGE_KEYS = {
   ANNOUNCEMENT_DISMISSED: 'announcement_dismissed',
   STABILIZED_MODELS: 'stabilizedModels',
   CME_LAST_SYMBOL: 'cmeLastSymbol',
+  CHECKLIST_HISTORY: 'checklist_history',
+  CHECKLIST_CUSTOM_ITEMS: 'checklist_customItems',
+  CHECKLIST_LABEL_OVERRIDES: 'checklist_labelOverrides',
+  CHECKLIST_HISTORY_META: 'checklist_historyMeta',
+  CHECKLIST_CATEGORY_LABEL_OVERRIDES: 'checklist_categoryLabelOverrides',
+  CHECKLIST_HIDDEN_CATEGORY_IDS: 'checklist_hiddenCategoryIds',
+  CHECKLIST_USER_CATEGORIES: 'checklist_userCategories',
 };

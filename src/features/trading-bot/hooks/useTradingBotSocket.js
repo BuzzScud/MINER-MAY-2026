@@ -18,16 +18,18 @@ import { io } from 'socket.io-client';
  *   onBacktestComplete?: (data: unknown) => void;
  *   onBacktestError?: (data: { error?: string }) => void;
  * }} callbacks
+ * @param {{ enabled?: boolean }} [options]
  * @returns {{ connected: boolean }}
  */
-export function useTradingBotSocket(callbacks = {}) {
+export function useTradingBotSocket(callbacks = {}, options = {}) {
   const [connected, setConnected] = useState(false);
   const socketRef = useRef(null);
   const callbacksRef = useRef(callbacks);
   callbacksRef.current = callbacks;
+  const enabled = options.enabled !== false;
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!enabled || typeof window === 'undefined') return;
 
     let socket;
     try {
@@ -108,7 +110,7 @@ export function useTradingBotSocket(callbacks = {}) {
       socketRef.current = null;
       setConnected(false);
     };
-  }, []);
+  }, [enabled]);
 
   return { connected };
 }

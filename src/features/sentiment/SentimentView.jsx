@@ -7,7 +7,6 @@ import CompositeIndicesView from './CompositeIndicesView';
 import CME from '../../pages/CME';
 
 const TAB_SENTIMENT = 'sentiment';
-const TAB_COMPOSITE = 'composite';
 const TAB_CME = 'cme';
 
 const PROVIDER_OPTIONS = [
@@ -33,12 +32,14 @@ export function SentimentView() {
   const { token } = useAuth();
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(() => (tabParam === TAB_CME ? TAB_CME : tabParam === TAB_COMPOSITE ? TAB_COMPOSITE : TAB_SENTIMENT));
+  const [activeTab, setActiveTab] = useState(() =>
+    tabParam === TAB_CME ? TAB_CME : TAB_SENTIMENT,
+  );
   useEffect(() => {
     if (tabParam === TAB_CME) setActiveTab(TAB_CME);
-    else if (tabParam === TAB_COMPOSITE) setActiveTab(TAB_COMPOSITE);
+    else setActiveTab(TAB_SENTIMENT);
   }, [tabParam]);
-  const [searchInput, setSearchInput] = useState(() => sentimentCache.asset || 'AAPL');
+  const [searchInput, setSearchInput] = useState(() => sentimentCache.asset || 'QQQ');
   const [provider, setProvider] = useState(() => sentimentCache.provider || 'yfinance');
   const [submittedAsset, setSubmittedAsset] = useState(() => sentimentCache.asset);
   const [submittedProvider, setSubmittedProvider] = useState(() => sentimentCache.provider);
@@ -109,6 +110,19 @@ export function SentimentView() {
       });
     return () => { cancelled = true; };
   }, [token]);
+
+  // Auto-load default sentiment for QQQ when opening the page on the Sentiment tab
+  useEffect(() => {
+    if (activeTab !== TAB_SENTIMENT) return;
+    if (submittedAsset) return;
+    const defaultSymbol = 'QQQ';
+    const upper = defaultSymbol.toUpperCase();
+    setSearchInput(upper);
+    sentimentCache.asset = upper;
+    sentimentCache.provider = provider;
+    setSubmittedAsset(upper);
+    setSubmittedProvider(provider);
+  }, [activeTab, submittedAsset, provider]);
 
   const handleGetSentiment = () => {
     const symbol = searchInput.trim().toUpperCase();
@@ -184,21 +198,6 @@ export function SentimentView() {
         <button
           type="button"
           role="tab"
-          aria-selected={activeTab === TAB_COMPOSITE}
-          aria-controls="tabpanel-composite"
-          id="tab-composite"
-          onClick={() => setActiveTab(TAB_COMPOSITE)}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === TAB_COMPOSITE
-              ? 'border-indigo-600 text-gray-900 dark:text-white'
-              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-          }`}
-        >
-          Composite & Indices
-        </button>
-        <button
-          type="button"
-          role="tab"
           aria-selected={activeTab === TAB_CME}
           aria-controls="tabpanel-cme"
           id="tab-cme"
@@ -223,153 +222,157 @@ export function SentimentView() {
           >
             <CME embedded />
           </div>
-        ) : activeTab === TAB_COMPOSITE ? (
-          <div
-            id="tabpanel-composite"
-            role="tabpanel"
-            aria-labelledby="tab-composite"
-          >
-            <CompositeIndicesView />
-          </div>
         ) : (
           <div
             id="tabpanel-sentiment"
             role="tabpanel"
             aria-labelledby="tab-sentiment"
-            className="space-y-6 pb-6"
+            className="pb-6"
           >
-            <div className="max-w-[720px] mx-auto">
-              <Panel title="Lookup">
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-                    <label htmlFor="symbol-search" className={labelClass + ' shrink-0'}>
-                      Symbol
-                    </label>
-                    <input
-                      id="symbol-search"
-                      type="text"
-                      value={searchInput}
-                      onChange={(e) => setSearchInput(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      placeholder="e.g. AAPL, BTC, TSLA"
-                      className={inputClass + ' min-w-0 w-full sm:min-w-[100px] sm:max-w-[180px]'}
-                      aria-label="Symbol to look up"
-                    />
-                    <label htmlFor="provider-select" className={labelClass + ' shrink-0'}>
-                      API
-                    </label>
-                    <select
-                      id="provider-select"
-                      value={provider}
-                      onChange={(e) => setProvider(e.target.value)}
-                      className={inputClass + ' min-w-0 sm:min-w-[140px]'}
-                      aria-label="API provider"
-                    >
-                      {PROVIDER_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={handleGetSentiment}
-                      disabled={!searchInput.trim()}
-                      aria-label="Get sentiment for the entered symbol"
-                      className={`shrink-0 min-w-0 sm:min-w-[140px] px-5 py-2.5 rounded-md text-sm font-semibold transition-colors ${
-                        searchInput.trim()
-                          ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm'
-                          : 'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-400 cursor-not-allowed'
-                      }`}
-                    >
-                      Get sentiment
-                    </button>
-                  </div>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <div className="space-y-6 max-w-[720px] xl:max-w-none mx-auto xl:mx-0">
+                <div>
+                  <Panel title="Lookup">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+                        <label htmlFor="symbol-search" className={labelClass + ' shrink-0'}>
+                          Symbol
+                        </label>
+                        <input
+                          id="symbol-search"
+                          type="text"
+                          value={searchInput}
+                          onChange={(e) => setSearchInput(e.target.value)}
+                          onKeyDown={handleKeyDown}
+                          placeholder="e.g. AAPL, BTC, TSLA"
+                          className={inputClass + ' min-w-0 w-full sm:min-w-[100px] sm:max-w-[180px]'}
+                          aria-label="Symbol to look up"
+                        />
+                        <label htmlFor="provider-select" className={labelClass + ' shrink-0'}>
+                          API
+                        </label>
+                        <select
+                          id="provider-select"
+                          value={provider}
+                          onChange={(e) => setProvider(e.target.value)}
+                          className={inputClass + ' min-w-0 sm:min-w-[140px]'}
+                          aria-label="API provider"
+                        >
+                          {PROVIDER_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={handleGetSentiment}
+                          disabled={!searchInput.trim()}
+                          aria-label="Get sentiment for the entered symbol"
+                          className={`shrink-0 min-w-0 sm:min-w-[140px] px-5 py-2.5 rounded-md text-sm font-semibold transition-colors ${
+                            searchInput.trim()
+                              ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm'
+                              : 'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-400 cursor-not-allowed'
+                          }`}
+                        >
+                          Get sentiment
+                        </button>
+                      </div>
+                    </div>
+                  </Panel>
                 </div>
-              </Panel>
-            </div>
 
-            <div className="max-w-[720px] mx-auto">
-              <Panel title="Options">
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
-                  <div className="flex items-center gap-2">
-                    <label htmlFor="aggregation-mode" className={labelClass}>
-                      Aggregation
-                    </label>
-                    <select
-                      id="aggregation-mode"
-                      value={aggregationMode}
-                      onChange={(e) => setAggregationMode(e.target.value)}
-                      className={inputClass + ' min-w-0 sm:min-w-[140px]'}
-                      aria-label="Aggregation mode"
-                    >
-                      {AGGREGATION_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="use-time-decay"
-                      type="checkbox"
-                      checked={useTimeDecay}
-                      onChange={(e) => setUseTimeDecay(e.target.checked)}
-                      className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500"
-                      aria-label="Use time decay"
-                    />
-                    <label htmlFor="use-time-decay" className={labelClass}>
-                      Time decay
-                    </label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="include-uncertainty"
-                      type="checkbox"
-                      checked={includeUncertainty}
-                      onChange={(e) => setIncludeUncertainty(e.target.checked)}
-                      className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500"
-                      aria-label="Include uncertainty"
-                    />
-                    <label htmlFor="include-uncertainty" className={labelClass}>
-                      Uncertainty
-                    </label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="use-prime-modular"
-                      type="checkbox"
-                      checked={usePrimeModular}
-                      onChange={(e) => setUsePrimeModular(e.target.checked)}
-                      className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500"
-                      aria-label="Use prime-modular"
-                    />
-                    <label htmlFor="use-prime-modular" className={labelClass}>
-                      Prime-modular
-                    </label>
-                  </div>
+                <div>
+                  <Panel title="Options">
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+                      <div className="flex items-center gap-2">
+                        <label htmlFor="aggregation-mode" className={labelClass}>
+                          Aggregation
+                        </label>
+                        <select
+                          id="aggregation-mode"
+                          value={aggregationMode}
+                          onChange={(e) => setAggregationMode(e.target.value)}
+                          className={inputClass + ' min-w-0 sm:min-w-[140px]'}
+                          aria-label="Aggregation mode"
+                        >
+                          {AGGREGATION_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          id="use-time-decay"
+                          type="checkbox"
+                          checked={useTimeDecay}
+                          onChange={(e) => setUseTimeDecay(e.target.checked)}
+                          className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500"
+                          aria-label="Use time decay"
+                        />
+                        <label htmlFor="use-time-decay" className={labelClass}>
+                          Time decay
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          id="include-uncertainty"
+                          type="checkbox"
+                          checked={includeUncertainty}
+                          onChange={(e) => setIncludeUncertainty(e.target.checked)}
+                          className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500"
+                          aria-label="Include uncertainty"
+                        />
+                        <label htmlFor="include-uncertainty" className={labelClass}>
+                          Uncertainty
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          id="use-prime-modular"
+                          type="checkbox"
+                          checked={usePrimeModular}
+                          onChange={(e) => setUsePrimeModular(e.target.checked)}
+                          className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500"
+                          aria-label="Use prime-modular"
+                        />
+                        <label htmlFor="use-prime-modular" className={labelClass}>
+                          Prime-modular
+                        </label>
+                      </div>
+                    </div>
+                  </Panel>
                 </div>
-              </Panel>
-            </div>
 
-            {submittedAsset ? (
-              <SentimentIndicator
-                key={submittedAsset}
-                asset={submittedAsset}
-                provider={submittedProvider ?? provider}
-                options={options}
-              />
-            ) : (
-              <section
-                aria-label="Sentiment placeholder"
-                className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 max-w-[720px] mx-auto"
-              >
-                <p className="m-0 text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                  Enter a symbol, select an API, and click <strong className="text-gray-700 dark:text-gray-300">Get sentiment</strong> to load data.
-                </p>
-              </section>
-            )}
+                {submittedAsset ? (
+                  <SentimentIndicator
+                    key={submittedAsset}
+                    asset={submittedAsset}
+                    provider={submittedProvider ?? provider}
+                    options={options}
+                  />
+                ) : (
+                  <section
+                    aria-label="Sentiment placeholder"
+                    className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 max-w-[720px] mx-auto xl:mx-0"
+                  >
+                    <p className="m-0 text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+                      Enter a symbol, select an API, and click{' '}
+                      <strong className="text-gray-700 dark:text-gray-300">Get sentiment</strong> to load data.
+                    </p>
+                  </section>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Composite & Indices
+                </h2>
+                <CompositeIndicesView embedded />
+              </div>
+            </div>
           </div>
         )}
       </div>

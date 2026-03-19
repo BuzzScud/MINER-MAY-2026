@@ -10,8 +10,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Trading from './pages/Trading';
+import Checklist from './pages/Checklist';
 import Settings from './pages/Settings';
-import Notes from './pages/Notes';
 import EconomicCalendar from './pages/EconomicCalendar';
 import BudgetTracker from './pages/BudgetTracker';
 import Miner from './pages/Miner';
@@ -52,7 +52,7 @@ function App() {
     }
     
     // Auto-detect subdirectory: if path has multiple segments and first isn't a known route
-    const knownRoutes = ['trading', 'notes', 'projection', 'settings', 'calendar', 'dashboard', 'fib-stuff', 'budget-tracker', 'miner', 'api-monitor', 'trading-bot', 'sentiment', 'cme', 'login', 'register', 'admin'];
+    const knownRoutes = ['trading', 'projection', 'settings', 'calendar', 'dashboard', 'fib-stuff', 'budget-tracker', 'miner', 'api-monitor', 'trading-bot', 'sentiment', 'cme', 'checklist', 'login', 'register', 'admin'];
     
     // If first part is not a known route, it's likely a subdirectory
     if (pathParts.length > 0 && !knownRoutes.includes(pathParts[0]) && pathParts[0] !== 'index.html') {
@@ -85,7 +85,7 @@ function App() {
               <Route index element={<Dashboard />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="trading" element={<Trading />} />
-              <Route path="notes" element={<Notes />} />
+              <Route path="checklist" element={<Checklist />} />
               <Route path="projection" element={<Navigate to="/trading?tab=projection" replace />} />
               <Route path="calendar" element={<EconomicCalendar />} />
               <Route path="fib-stuff" element={<Navigate to="/trading?tab=fib" replace />} />

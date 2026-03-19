@@ -122,13 +122,12 @@ function useCompositeData() {
 const cardSectionClass =
   'rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 w-full';
 
-export default function CompositeIndicesView() {
-  const { current, history, loading, refreshing, error, refetch } =
-    useCompositeData();
+export default function CompositeIndicesView({ embedded = false }) {
+  const { current, history, loading, refreshing, error, refetch } = useCompositeData();
 
   if (error) {
     return (
-      <div className="space-y-6 pb-6 max-w-[720px] mx-auto">
+      <div className={`space-y-6 pb-6 ${embedded ? 'w-full' : 'max-w-[720px] mx-auto'}`}>
         <section aria-label="Composite error" className={cardSectionClass}>
           <h2 className="m-0 mb-3 text-lg font-semibold text-gray-900 dark:text-white">
             Composite & Indices
@@ -154,7 +153,7 @@ export default function CompositeIndicesView() {
   const components = current?.composite_components ?? null;
 
   return (
-    <div className="space-y-6 pb-6 max-w-[720px] mx-auto">
+    <div className={`space-y-6 pb-6 ${embedded ? 'w-full' : 'max-w-[720px] mx-auto'}`}>
       <section
         className={cardSectionClass}
         aria-label="Composite score and history"

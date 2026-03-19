@@ -87,6 +87,7 @@ export default function Miner() {
   const [backtestRunning, setBacktestRunning] = useState(false);
   const [backtestResult, setBacktestResult] = useState(null);
   const [backtestStatus, setBacktestStatus] = useState('');
+  const [pollingEnabled, setPollingEnabled] = useState(false);
 
   const getConfigForApi = useCallback(() => {
     const port = config.rpc_port || DEFAULT_PORTS[config.network] || 8332;
@@ -183,22 +184,13 @@ export default function Miner() {
   }, [connectionStatus.connected, connectionStatus.message, setItem]);
 
   useEffect(() => {
-    checkConnection().catch(() => {});
-  }, [checkConnection]);
-
-  useEffect(() => {
-    api('/stats').then((r) => {
-      if (r && r.error === MINER_SERVER_UNREACHABLE) {
-        setConnectionStatus((prev) =>
-          prev.state === 'idle' ? { state: 'error', message: minerServerDownMessage, connected: false } : prev
-        );
-      }
-    });
-  }, []);
-
-  useEffect(() => {
+    if (!pollingEnabled) return;
     const cfg = getConfigForApi();
-    const params = Object.fromEntries(Object.entries(cfg).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)]));
+    const params = Object.fromEntries(
+      Object.entries(cfg)
+        .filter(([, v]) => v !== undefined && v !== '')
+        .map(([k, v]) => [k, String(v)]),
+    );
     const fetchAll = () => {
       api('/stats').then(setStats);
       if (connectionStatus.connected || params.network) {
@@ -210,7 +202,7 @@ export default function Miner() {
     fetchAll();
     const t = setInterval(fetchAll, 1000);
     return () => clearInterval(t);
-  }, [getConfigForApi, connectionStatus.connected]);
+  }, [getConfigForApi, connectionStatus.connected, pollingEnabled]);
 
   useEffect(() => {
     api('/thesis_math_status').then((r) => r.python_miner && setThesisInfo(r));
@@ -359,8 +351,16 @@ export default function Miner() {
                   <button type="button" onClick={() => setConnectionModalOpen(true)} className="rounded bg-gray-200 dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-500">
                     Connection settings
                   </button>
-                  <button type="button" onClick={checkConnection} disabled={checkingConnection} className="rounded bg-gray-200 dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-500">
-                    Connect
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await checkConnection().catch(() => {});
+                      setPollingEnabled(true);
+                    }}
+                    disabled={checkingConnection}
+                    className="rounded bg-gray-200 dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-500"
+                  >
+                    Connect &amp; start metrics
                   </button>
                 </div>
                 {connectionHint && <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">{connectionHint}</p>}
