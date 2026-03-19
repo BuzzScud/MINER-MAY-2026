@@ -1,5 +1,5 @@
 import express from 'express';
-import fetch from 'node-fetch';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -487,7 +487,7 @@ function predictWithCrystalline(series, horizonDays, barsPerDay = TRADING_HOURS_
   };
 }
 
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   try {
     if (req.headers['content-type'] && !req.headers['content-type'].includes('application/json')) {
       return res.status(415).json({ error: 'Content-Type must be application/json' });

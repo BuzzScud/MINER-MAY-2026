@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { migrateLocalToApi } from '../utils/storage';
 
-const TOKEN_KEY = 'algonov_jwt';
+const SESSION_TOKEN = '__cookie_session__';
 
 const AuthContext = createContext(null);
 
@@ -13,10 +13,8 @@ export function AuthProvider({ children }) {
 
   const setToken = useCallback((newToken) => {
     if (newToken) {
-      localStorage.setItem(TOKEN_KEY, newToken);
       setTokenState(newToken);
     } else {
-      localStorage.removeItem(TOKEN_KEY);
       setTokenState(null);
       setUser(null);
     }
@@ -27,6 +25,7 @@ export function AuthProvider({ children }) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
+      credentials: 'include',
     });
     const text = await res.text();
     let data;
@@ -37,10 +36,10 @@ export function AuthProvider({ children }) {
     }
     if (!res.ok) throw new Error(data.error || 'Login failed');
     setMigrationPending(true);
-    setToken(data.token);
+    setToken(SESSION_TOKEN);
     setUser(data.user);
     try {
-      await migrateLocalToApi(data.token);
+      await migrateLocalToApi(SESSION_TOKEN);
     } finally {
       setMigrationPending(false);
     }
@@ -52,6 +51,7 @@ export function AuthProvider({ children }) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
+      credentials: 'include',
     });
     const text = await res.text();
     let data;
@@ -62,33 +62,35 @@ export function AuthProvider({ children }) {
     }
     if (!res.ok) throw new Error(data.error || 'Registration failed');
     setMigrationPending(true);
-    setToken(data.token);
+    setToken(SESSION_TOKEN);
     setUser(data.user);
     try {
-      await migrateLocalToApi(data.token);
+      await migrateLocalToApi(SESSION_TOKEN);
     } finally {
       setMigrationPending(false);
     }
     return data;
   }, [setToken]);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch {
+      // Best effort; still clear local auth state.
+    }
     setMigrationPending(false);
     setToken(null);
   }, [setToken]);
 
   useEffect(() => {
-    const stored = localStorage.getItem(TOKEN_KEY);
-    if (!stored) {
-      setLoading(false);
-      return;
-    }
     fetch('/api/auth/me', {
-      headers: { Authorization: `Bearer ${stored}` },
+      credentials: 'include',
     })
       .then(async (res) => {
         if (res.status === 401) {
-          localStorage.removeItem(TOKEN_KEY);
           setTokenState(null);
           setUser(null);
           return null;
@@ -102,22 +104,18 @@ export function AuthProvider({ children }) {
       })
       .then((data) => {
         if (data?.user) {
-          setTokenState(stored);
+          setTokenState(SESSION_TOKEN);
           setUser(data.user);
-        } else if (stored) {
-          localStorage.removeItem(TOKEN_KEY);
         }
       })
-      .catch(() => {
-        localStorage.removeItem(TOKEN_KEY);
-      })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
     if (!token) return;
     const interval = setInterval(() => {
-      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+      fetch('/api/auth/me', { credentials: 'include' })
         .then(async (res) => {
           if (res.status === 401) setToken(null);
         })
@@ -134,7 +132,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
-    isAuthenticated: !!token,
+    isAuthenticated: !!user,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

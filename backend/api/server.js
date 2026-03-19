@@ -2,6 +2,8 @@ import 'dotenv/config';
 import './startTime.js';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { pool, initSchema, seedAdmin } from './db.js';
 import authRoutes from './routes/auth.js';
 import dataRoutes from './routes/data.js';
@@ -9,6 +11,7 @@ import adminRoutes from './routes/admin.js';
 import settingsRoutes from './routes/settings.js';
 import sentimentBackendRoutes from './routes/sentimentBackend.js';
 import predictRoutes from './routes/predict.js';
+import marketDataRoutes from './routes/marketData.js';
 
 // Security: refuse to start in production without a strong JWT_SECRET
 const isProduction = process.env.NODE_ENV === 'production';
@@ -26,14 +29,44 @@ app.set('trust proxy', 1);
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
   : [];
+
+if (isProduction && allowedOrigins.length === 0) {
+  console.error('FATAL: ALLOWED_ORIGINS must be set in production.');
+  process.exit(1);
+}
+
 const corsOptions = isProduction
-  ? (allowedOrigins.length > 0
-      ? { origin: allowedOrigins, credentials: true }
-      : { origin: false })
-  : { origin: true };
+  ? { origin: allowedOrigins, credentials: true }
+  : { origin: true, credentials: true };
+
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }),
+);
 app.use(cors(corsOptions));
 
-app.use(express.json({ limit: '256kb' }));
+const authRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many authentication attempts. Please try again later.' },
+});
+
+const apiRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
+});
+
+app.use(express.json({ limit: '10kb' }));
+app.use('/api', apiRateLimiter);
+app.use('/api/auth/login', authRateLimiter);
+app.use('/api/auth/register', authRateLimiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/data', dataRoutes);
@@ -41,9 +74,21 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/sentiment-backend', sentimentBackendRoutes);
 app.use('/api/predict', predictRoutes);
+app.use('/api/market-data', marketDataRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true });
+});
+
+app.use((err, req, res, next) => {
+  console.error('Unhandled API error:', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  if (err?.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Request entity too large' });
+  }
+  return res.status(500).json({ error: 'Internal server error' });
 });
 
 async function start() {

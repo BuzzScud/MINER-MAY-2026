@@ -32,9 +32,17 @@ export default defineConfig(({ command }) => ({
     port: 5173,
     strictPort: true,
     open: false,
+    headers: {
+      'Content-Security-Policy': "default-src 'self'; script-src 'self' https://s3.tradingview.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss: https://query1.finance.yahoo.com https://query2.finance.yahoo.com https://finnhub.io https://api.massive.com https://corsproxy.io https://thingproxy.freeboard.io https://cors-anywhere.herokuapp.com; frame-src https://www.tradingview.com https://s.tradingview.com; object-src 'none'; base-uri 'self'; form-action 'self';",
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'Permissions-Policy': 'geolocation=(), camera=(), microphone=()',
+    },
     proxy: {
       '/api/sentiment-backend': { target: 'http://localhost:4000', changeOrigin: true },
       '/api/predict': { target: 'http://localhost:4000', changeOrigin: true },
+      '/api/market-data': { target: 'http://localhost:4000', changeOrigin: true },
       '/api/sentiment': { target: 'http://localhost:8000', changeOrigin: true },
       '/api/composite': { target: 'http://localhost:8000', changeOrigin: true },
       '/api/yahoo': {

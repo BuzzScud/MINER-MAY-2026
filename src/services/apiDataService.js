@@ -5,7 +5,7 @@
 
 export async function loadAllData(token) {
   const res = await fetch('/api/data', {
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: 'include',
   });
   if (!res.ok) {
     if (res.status === 401) throw new Error('Unauthorized');
@@ -18,7 +18,7 @@ export async function loadData(token, keys) {
   if (!keys || keys.length === 0) return {};
   const query = new URLSearchParams({ keys: keys.join(',') });
   const res = await fetch(`/api/data?${query}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: 'include',
   });
   if (!res.ok) {
     if (res.status === 401) throw new Error('Unauthorized');
@@ -32,9 +32,9 @@ export async function saveData(token, key, value) {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ value }),
+    credentials: 'include',
   });
   if (!res.ok) {
     if (res.status === 401) throw new Error('Unauthorized');
@@ -47,9 +47,9 @@ export async function saveBatch(token, updates) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ updates }),
+    credentials: 'include',
   });
   if (!res.ok) {
     if (res.status === 401) throw new Error('Unauthorized');

@@ -75,9 +75,6 @@ const getYahooFinanceUrl = (symbol, interval = '1d', range = '1d', proxyIndex = 
   return proxy.getUrl(baseUrl);
 };
 
-// Default Finnhub API key for production
-const DEFAULT_FINNHUB_KEY = 'd18ueuhr01qkcat4uip0d18ueuhr01qkcat4uipg';
-
 // Helper function to get API keys from storage (async when adapter set) - exported for healthChecks
 export const getApiKeys = async () => {
   try {
@@ -90,29 +87,17 @@ export const getApiKeys = async () => {
     }
     if (saved && typeof saved === 'object') {
       return {
-        finnhub: saved.finnhub || DEFAULT_FINNHUB_KEY,
-        massive: saved.massive || 'qeBvdtjWjffA90rzgWB_HeHtmdpyuGQG',
+        finnhub: saved.finnhub || '',
+        massive: saved.massive || '',
       };
     }
   } catch (error) {
     console.error('Error loading API keys:', error);
   }
   return {
-    finnhub: DEFAULT_FINNHUB_KEY,
-    massive: 'qeBvdtjWjffA90rzgWB_HeHtmdpyuGQG',
+    finnhub: '',
+    massive: '',
   };
-};
-
-// Finnhub API - Backup endpoint (Free tier: 60 calls/minute)
-const getFinnhubUrl = (symbol, apiKeys) => {
-  const apiKey = apiKeys?.finnhub || 'demo';
-  return `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`;
-};
-
-// Massive API - Backup endpoint (Single Ticker Snapshot)
-const getMassiveUrl = (symbol, apiKeys) => {
-  const apiKey = apiKeys?.massive || 'qeBvdtjWjffA90rzgWB_HeHtmdpyuGQG';
-  return `https://api.massive.com/v2/snapshot/locale/us/markets/stocks/tickers/${symbol}?apiKey=${apiKey}`;
 };
 
 // Helper function to check cache
@@ -302,18 +287,16 @@ export const fetchFinnhub = async (symbol) => {
   }
 
   try {
-    const apiKeys = await getApiKeys();
-    const url = getFinnhubUrl(finnhubSymbol, apiKeys);
-    
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
     
-    const response = await fetch(url, {
+    const response = await fetch(`/api/market-data/finnhub/quote?symbol=${encodeURIComponent(finnhubSymbol)}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
       },
       signal: controller.signal,
+      credentials: 'include',
     });
     
     clearTimeout(timeoutId);
@@ -322,7 +305,8 @@ export const fetchFinnhub = async (symbol) => {
       throw new Error(`Finnhub HTTP ${response.status}`);
     }
     
-    const data = await response.json();
+    const payload = await response.json();
+    const data = payload?.data;
     
     if (!data || data.error) {
       throw new Error(data.error || 'Empty response from Finnhub API');
@@ -348,14 +332,12 @@ export const fetchFinnhub = async (symbol) => {
 // Helper function to fetch from Massive (Backup API)
 export const fetchMassive = async (symbol) => {
   try {
-    const apiKeys = await getApiKeys();
-    const url = getMassiveUrl(symbol, apiKeys);
-
-    const response = await fetch(url, {
+    const response = await fetch(`/api/market-data/massive/snapshot?symbol=${encodeURIComponent(symbol)}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
       },
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -363,10 +345,10 @@ export const fetchMassive = async (symbol) => {
       throw new Error(`Massive HTTP ${response.status}: ${errorText}`);
     }
 
-    const data = await response.json();
-
+    const payload = await response.json();
+    const data = payload?.data;
     if (!data || data.status !== 'OK' || !data.ticker) {
-      throw new Error(data?.error || 'Invalid response from Massive API');
+      throw new Error(payload?.error || data?.error || 'Invalid response from Massive API');
     }
 
     const ticker = data.ticker;

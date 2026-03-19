@@ -266,8 +266,8 @@ function AppearanceTab({ showSaveStatus }) {
 function ApiKeysTab({ showSaveStatus }) {
   const { getItem, setItem } = useStorage();
   const [apiKeys, setApiKeys] = useState({
-    finnhub: 'demo',
-    massive: 'qeBvdtjWjffA90rzgWB_HeHtmdpyuGQG',
+    finnhub: '',
+    massive: '',
     fibhub: '',
   });
   const [showApiKeys, setShowApiKeys] = useState({ finnhub: false, massive: false, fibhub: false });
@@ -317,7 +317,7 @@ function ApiKeysTab({ showSaveStatus }) {
       }
     >
       <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-        Keys are stored locally in your browser. They are never sent to any third-party server.
+        Optional local override keys for development only. In production, market APIs are proxied through the backend using server-side environment secrets.
       </p>
       <div className="space-y-3">
         <ApiKeyField

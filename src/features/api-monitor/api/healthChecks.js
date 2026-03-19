@@ -3,20 +3,14 @@
  * Uses monitorService getApiKeys for storage abstraction (PostgreSQL when logged in).
  */
 
-import { getApiKeys } from '../../../services/monitorService';
-
 const DEGRADED_LATENCY_MS = 2000;
-
-const DEFAULT_FINNHUB_KEY = 'd18ueuhr01qkcat4uip0d18ueuhr01qkcat4uipg';
-const DEFAULT_MASSIVE_KEY = 'qeBvdtjWjffA90rzgWB_HeHtmdpyuGQG';
 
 /**
  * Build the URL for an endpoint. Uses storage abstraction for API keys.
  */
 export async function getEndpointUrl(endpoint) {
   if (typeof endpoint.url === 'function') {
-    const keys = await getApiKeys();
-    return endpoint.url(keys);
+    return endpoint.url();
   }
   return endpoint.url;
 }
@@ -41,6 +35,7 @@ export async function checkEndpoint(config) {
       signal: controller.signal,
       headers: config.headers || {},
       mode: 'cors',
+      credentials: 'include',
     });
 
     clearTimeout(timeoutId);
@@ -116,7 +111,7 @@ export const CHECK_ENDPOINTS = [
     id: 'finnhub',
     name: 'Finnhub',
     description: 'Backup market data',
-    url: (keys) => `https://finnhub.io/api/v1/quote?symbol=QQQ&token=${keys.finnhub || DEFAULT_FINNHUB_KEY}`,
+    url: () => `${typeof window !== 'undefined' ? window.location.origin : ''}/api/market-data/health-check?provider=finnhub&symbol=QQQ`,
     method: 'GET',
     usedBy: ['Charts', 'Dashboard', 'Projection'],
   },
@@ -124,7 +119,7 @@ export const CHECK_ENDPOINTS = [
     id: 'massive',
     name: 'Massive',
     description: 'Backup market data',
-    url: (keys) => `https://api.massive.com/v2/aggs/ticker/QQQ/prev?apiKey=${keys.massive || DEFAULT_MASSIVE_KEY}`,
+    url: () => `${typeof window !== 'undefined' ? window.location.origin : ''}/api/market-data/health-check?provider=massive&symbol=QQQ`,
     method: 'GET',
     usedBy: ['Charts', 'Dashboard', 'Projection'],
   },

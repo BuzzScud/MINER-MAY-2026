@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { pool } from '../db.js';
+import { extractAuthToken } from '../utils/authCookie.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 
@@ -12,11 +13,10 @@ async function getEmergencyLogoutGeneration() {
  * Require a valid JWT. Sets req.userId. Non-admin tokens are invalidated when emergency_logout generation increases.
  */
 export async function requireAuth(req, res, next) {
-  const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith('Bearer ')) {
+  const token = extractAuthToken(req);
+  if (!token) {
     return res.status(401).json({ error: 'Authentication required' });
   }
-  const token = auth.slice(7);
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     if (!decoded.is_admin) {

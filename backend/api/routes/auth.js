@@ -2,6 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from '../db.js';
+import { clearAuthCookie, extractAuthToken, setAuthCookie } from '../utils/authCookie.js';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
@@ -65,6 +66,7 @@ router.post('/register', async (req, res) => {
     const user = result.rows[0];
     const logoutGen = await getEmergencyLogoutGeneration();
     const token = generateToken(user, logoutGen);
+    setAuthCookie(res, token);
     res.json({
       token,
       user: {
@@ -120,6 +122,7 @@ router.post('/login', async (req, res) => {
     await logLoginAttempt(usernameTrimmed, true, req);
     const logoutGen = await getEmergencyLogoutGeneration();
     const token = generateToken(user, logoutGen);
+    setAuthCookie(res, token);
     res.json({
       token,
       user: {
@@ -138,11 +141,10 @@ router.post('/login', async (req, res) => {
 
 router.get('/me', async (req, res) => {
   try {
-    const auth = req.headers.authorization;
-    if (!auth || !auth.startsWith('Bearer ')) {
+    const token = extractAuthToken(req);
+    if (!token) {
       return res.status(401).json({ error: 'Authentication required' });
     }
-    const token = auth.slice(7);
     const decoded = jwt.verify(token, JWT_SECRET);
     const result = await pool.query(
       `SELECT id, username, created_at, is_admin, is_active, can_access_dashboard, can_register, can_edit_own_profile
@@ -169,6 +171,11 @@ router.get('/me', async (req, res) => {
   } catch (e) {
     res.status(401).json({ error: 'Invalid or expired token' });
   }
+});
+
+router.post('/logout', async (req, res) => {
+  clearAuthCookie(res);
+  return res.json({ ok: true });
 });
 
 export default router;

@@ -11,7 +11,7 @@ function EconomicCalendarWidget({ width = "100%", height = 550, colorTheme = "da
     const el = container.current;
     if (!el || !document.body.contains(el)) return;
 
-    el.innerHTML = '';
+    el.replaceChildren();
     const widgetContainer = document.createElement("div");
     widgetContainer.className = "tradingview-widget-container__widget";
 
@@ -19,7 +19,7 @@ function EconomicCalendarWidget({ width = "100%", height = 550, colorTheme = "da
     script.src = "https://s3.tradingview.com/external-embedding/embed-widget-events.js";
     script.type = "text/javascript";
     script.async = true;
-    script.innerHTML = JSON.stringify({
+    script.textContent = JSON.stringify({
       colorTheme: colorTheme,
       isTransparent: true,
       width: width,
@@ -37,7 +37,7 @@ function EconomicCalendarWidget({ width = "100%", height = 550, colorTheme = "da
       if (!target) return;
       // Delay clear so TradingView script (runs async) does not run after DOM is cleared
       setTimeout(() => {
-        if (target.parentNode) target.innerHTML = '';
+        if (target.parentNode) target.replaceChildren();
       }, 150);
     };
   }, [width, height, colorTheme]);

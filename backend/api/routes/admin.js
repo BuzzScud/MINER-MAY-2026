@@ -7,17 +7,17 @@ import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { pool } from '../db.js';
 import { startTime } from '../startTime.js';
+import { extractAuthToken } from '../utils/authCookie.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 
 async function adminRequired(req, res, next) {
-  const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith('Bearer ')) {
+  const token = extractAuthToken(req);
+  if (!token) {
     return res.status(401).json({ error: 'Authentication required' });
   }
-  const token = auth.slice(7);
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     const r = await pool.query(
@@ -417,7 +417,28 @@ router.get('/dependencies', async (req, res) => {
 
 router.get('/rate-limits', async (req, res) => {
   await logActivity(req);
-  res.json({ message: 'Not implemented', limits: [] });
+  res.json({
+    limits: [
+      {
+        id: 'api-general',
+        window_ms: 15 * 60 * 1000,
+        max_requests: 100,
+        scope: '/api/*',
+      },
+      {
+        id: 'auth-login',
+        window_ms: 15 * 60 * 1000,
+        max_requests: 5,
+        scope: '/api/auth/login',
+      },
+      {
+        id: 'auth-register',
+        window_ms: 15 * 60 * 1000,
+        max_requests: 5,
+        scope: '/api/auth/register',
+      },
+    ],
+  });
 });
 
 function escapeCsvCell(val) {
