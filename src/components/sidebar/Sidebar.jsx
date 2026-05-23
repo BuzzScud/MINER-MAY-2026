@@ -249,8 +249,6 @@ function Sidebar({ isOpen, onClose }) {
   const [sections, setSections] = useState(getDefaultSections);
   const [collapsedSectionIds, setCollapsedSectionIds] = useState(() => new Set());
   const [navLoaded, setNavLoaded] = useState(false);
-  const [loadFailed, setLoadFailed] = useState(false);
-  const [hasUserEdited, setHasUserEdited] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [showSavedFeedback, setShowSavedFeedback] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
@@ -260,7 +258,6 @@ function Sidebar({ isOpen, onClose }) {
 
   useEffect(() => {
     let cancelled = false;
-    setLoadFailed(false);
     Promise.all([
       getItem(SIDEBAR_NAV_KEY),
       getItem(STORAGE_KEYS.DARK_MODE),
@@ -273,7 +270,7 @@ function Sidebar({ isOpen, onClose }) {
         setDarkMode(dm === true || dm === 'true');
       })
       .catch(() => {
-        if (!cancelled) setLoadFailed(true);
+        // Keep default sidebar layout when storage is unavailable.
       })
       .finally(() => {
         if (!cancelled) setNavLoaded(true);
@@ -312,7 +309,6 @@ function Sidebar({ isOpen, onClose }) {
   };
 
   const toggleSectionCollapsed = (sectionId) => {
-    setHasUserEdited(true);
     setCollapsedSectionIds((prev) => {
       const next = new Set(prev);
       if (next.has(sectionId)) next.delete(sectionId);
@@ -324,7 +320,6 @@ function Sidebar({ isOpen, onClose }) {
   const addCategory = () => {
     const label = (newCategoryName || 'New category').trim();
     if (!label) return;
-    setHasUserEdited(true);
     const uncategorizedIndex = sections.findIndex((s) => s.id === 'uncategorized');
     const insertIndex = uncategorizedIndex >= 0 ? uncategorizedIndex : sections.length;
     const newSection = { id: 'cat_' + Date.now(), label, pagePaths: [] };
@@ -339,7 +334,6 @@ function Sidebar({ isOpen, onClose }) {
 
   const removeCategory = (sectionId) => {
     if (!sectionId.startsWith('cat_')) return;
-    setHasUserEdited(true);
     const section = sections.find((s) => s.id === sectionId);
     if (!section) return;
     const uncategorized = sections.find((s) => s.id === 'uncategorized');
@@ -359,7 +353,6 @@ function Sidebar({ isOpen, onClose }) {
   };
 
   const renameCategory = (sectionId, newLabel) => {
-    setHasUserEdited(true);
     const trimmed = (newLabel ?? '').trim() || 'New category';
     setSections((prev) =>
       prev.map((s) => (s.id === sectionId ? { ...s, label: trimmed } : s))
@@ -389,7 +382,6 @@ function Sidebar({ isOpen, onClose }) {
   const handleNavDragEnd = (event) => {
     const { active, over } = event;
     if (!over) return;
-    setHasUserEdited(true);
     const path = active.id;
     const overId = String(over.id);
     const sourceSectionIndex = sections.findIndex((s) => s.pagePaths.includes(path));

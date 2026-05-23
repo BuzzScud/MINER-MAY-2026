@@ -425,7 +425,6 @@ function Trading() {
 
     // Prevent flashing by not clearing data immediately
     const previousChartData = chartData;
-    const previousVolumeData = volumeData;
     
     setLoading(true);
     setError(null);
@@ -485,7 +484,7 @@ function Trading() {
               timeZone: 'America/New_York'
             });
           }
-        } catch (e) {
+        } catch (_e) {
           return '';
         }
       }).filter(label => label !== '');

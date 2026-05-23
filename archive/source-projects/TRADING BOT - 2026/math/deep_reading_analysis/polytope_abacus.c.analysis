@@ -1,7 +1,0 @@
-=== FILE: math/src/platonic/polytope_abacus.c ===
-
---- FUNCTIONS IMPLEMENTED ---
-void platonic_abacus_free(PlatonicSolidAbacus* solid) {
-
---- KEY ALGORITHMS ---
-

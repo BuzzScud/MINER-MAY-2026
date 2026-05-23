@@ -193,7 +193,7 @@ function FibStuff({ embedded = false }) {
       priceLinesRef.current.forEach((line) => {
         try {
           seriesRef.current.removePriceLine(line);
-        } catch (e) {
+        } catch (_e) {
           /* ignore */
         }
       });

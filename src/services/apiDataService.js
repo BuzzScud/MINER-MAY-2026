@@ -3,7 +3,7 @@
  * Requires Authorization: Bearer <token>.
  */
 
-export async function loadAllData(token) {
+export async function loadAllData(_token) {
   const res = await fetch('/api/data', {
     credentials: 'include',
   });

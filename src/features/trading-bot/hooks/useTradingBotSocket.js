@@ -46,7 +46,7 @@ export function useTradingBotSocket(callbacks = {}, options = {}) {
         ...(typeof localStorage !== 'undefined' && { logger: { error: () => {}, warn: () => {}, info: () => {}, debug: () => {} } }),
       });
       socketRef.current = socket;
-    } catch (err) {
+    } catch (_err) {
       return;
     }
 

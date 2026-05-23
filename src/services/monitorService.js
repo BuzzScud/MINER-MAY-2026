@@ -157,7 +157,7 @@ const fetchWithProxy = async (symbol, interval, range, proxyIndex, endpointIndex
       const text = await response.text();
       try {
         data = JSON.parse(text);
-      } catch (e) {
+      } catch (_e) {
         throw new Error('Response is not JSON');
       }
     }
@@ -218,14 +218,12 @@ export const fetchYahooFinance = async (symbol, interval = '1d', range = '1d') =
   }
   
   // In production, try multiple CORS proxies with multiple Yahoo endpoints
-  let lastError = null;
   const totalAttempts = CORS_PROXIES.length * YAHOO_ENDPOINTS.length;
   
   // Try starting from the preferred proxy and endpoint, then cycle through others
   for (let attempt = 0; attempt < totalAttempts; attempt++) {
     const proxyIndex = (preferredProxyIndex + Math.floor(attempt / YAHOO_ENDPOINTS.length)) % CORS_PROXIES.length;
     const endpointIndex = (preferredEndpointIndex + attempt) % YAHOO_ENDPOINTS.length;
-    const proxy = CORS_PROXIES[proxyIndex];
     
     try {
       const data = await fetchWithProxy(symbol, interval, range, proxyIndex, endpointIndex);
@@ -258,8 +256,7 @@ export const fetchYahooFinance = async (symbol, interval = '1d', range = '1d') =
       const result = { data, source: 'yahoo' };
       setCachedData(cacheKey, result);
       return result;
-    } catch (error) {
-      lastError = error;
+    } catch {
       // Continue to next proxy/endpoint combination silently
     }
   }
@@ -488,7 +485,6 @@ const convertYahooToMonitor = (symbol, yahooData) => {
   
   const result = yahooData.chart.result[0];
   const meta = result.meta;
-  const quote = result.indicators?.quote?.[0];
   
   const currentPrice = meta.regularMarketPrice || meta.previousClose || 0;
   const previousClose = meta.previousClose || currentPrice;
@@ -890,7 +886,7 @@ export const getMonitorHistory = async (id) => {
 };
 
 // Get latest downtime period info
-export const getMonitorDowntime = async (id) => {
+export const getMonitorDowntime = async (_id) => {
   // For live data, we don't track downtime the same way
   return {
     start: null,

@@ -180,23 +180,6 @@ export function useChecklist() {
     [customItems, hiddenCategoryIds, visibleCategories],
   );
 
-  const itemLabelMap = useMemo(() => {
-    const map = {};
-    CATEGORIES.forEach((category) => {
-      category.items.forEach((item) => {
-        const overridden = labelOverrides[item.id];
-        map[item.id] =
-          typeof overridden === 'string' && overridden.trim()
-            ? overridden
-            : item.label;
-      });
-    });
-    customItems.forEach((item) => {
-      map[item.id] = item.label;
-    });
-    return map;
-  }, [customItems, labelOverrides]);
-
   const todayIso = getTodayIso();
   const todayCompleted = history[todayIso] || [];
   const todayPct =

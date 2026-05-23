@@ -29,10 +29,8 @@ try {
     /src=.*main\.jsx/i,
   ];
 
-  let hasSourceReference = false;
   for (const pattern of sourceFilePatterns) {
     if (pattern.test(indexHtml)) {
-      hasSourceReference = true;
       console.error('❌ ERROR: dist/index.html contains source file reference!');
       console.error('   Found reference to main.jsx in the built file.');
       console.error('   This will cause "SyntaxError: Unexpected token \'<\'" in production.');

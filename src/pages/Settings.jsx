@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useSettings } from '../contexts/SettingsContext';
 import { useStorage } from '../utils/storage';
 import { useAuth } from '../contexts/AuthContext';
-import { loadAll, saveBatch } from '../utils/storage';
+import { saveBatch } from '../utils/storage';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 
 const TABS = [
@@ -272,7 +272,6 @@ function ApiKeysTab({ showSaveStatus }) {
   });
   const [showApiKeys, setShowApiKeys] = useState({ finnhub: false, massive: false, fibhub: false });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -281,7 +280,6 @@ function ApiKeysTab({ showSaveStatus }) {
       if (saved && typeof saved === 'object') {
         setApiKeys((prev) => ({ ...prev, ...saved }));
       }
-      setLoaded(true);
     });
     return () => { cancelled = true; };
   }, [getItem]);
@@ -296,7 +294,7 @@ function ApiKeysTab({ showSaveStatus }) {
       await setItem(STORAGE_KEYS.API_KEYS, apiKeys);
       setHasUnsavedChanges(false);
       showSaveStatus('API keys saved', 'success');
-    } catch (e) {
+    } catch (_e) {
       showSaveStatus('Failed to save', 'error');
     }
   }, [apiKeys, showSaveStatus, setItem]);
@@ -357,7 +355,6 @@ function DataTab({ showSaveStatus }) {
   const [defaultSymbols, setDefaultSymbols] = useState(['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN']);
   const [newSymbol, setNewSymbol] = useState('');
   const [dataSettings, setDataSettings] = useState({ preferredApi: 'auto', numberFormat: 'us' });
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -371,7 +368,6 @@ function DataTab({ showSaveStatus }) {
       if (Array.isArray(syms)) setDefaultSymbols(syms);
       const merged = { preferredApi: pref || 'auto', numberFormat: 'us', ...(typeof ds === 'object' && ds ? ds : {}) };
       setDataSettings(merged);
-      setLoaded(true);
     })();
     return () => { cancelled = true; };
   }, [getItem]);
@@ -554,7 +550,6 @@ function NotificationsTab({ showSaveStatus }) {
 function AccessibilityTab({ showSaveStatus }) {
   const { getItem, setItem } = useStorage();
   const [accessibility, setAccessibility] = useState({ reducedMotion: false, highContrast: false });
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -564,7 +559,6 @@ function AccessibilityTab({ showSaveStatus }) {
       if (acc.reducedMotion) document.documentElement.dataset.reducedMotion = 'on';
       if (acc.highContrast) document.documentElement.dataset.highContrast = 'on';
       setAccessibility(acc);
-      setLoaded(true);
     });
     return () => { cancelled = true; };
   }, [getItem]);
@@ -641,7 +635,7 @@ function PrivacyTab({ showSaveStatus }) {
       a.click();
       URL.revokeObjectURL(a.href);
       showSaveStatus('Settings exported', 'success');
-    } catch (e) {
+    } catch (_e) {
       showSaveStatus('Export failed', 'error');
     }
   }, [showSaveStatus, getItem]);

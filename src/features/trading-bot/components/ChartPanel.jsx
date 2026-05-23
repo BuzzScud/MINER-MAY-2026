@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createChart, CandlestickSeries } from 'lightweight-charts';
 import { toChartBar, dedupBars, getCandleCountdown, CANDLE_DURATIONS } from '../utils/formatters';
 import { fmtPrice } from '../utils/formatters';

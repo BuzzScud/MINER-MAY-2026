@@ -1,9 +1,0 @@
-=== FILE: math/include/math/platonic_generator_abacus.h ===
-
---- FUNCTIONS ---
-
---- TYPES ---
-
---- CONSTANTS ---
-#define MATH_PLATONIC_GENERATOR_ABACUS_H
-

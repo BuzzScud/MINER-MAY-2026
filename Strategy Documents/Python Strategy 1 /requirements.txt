@@ -1,6 +1,0 @@
-alpaca-py
-certifi
-customtkinter
-python-dotenv
-pandas
-pytz

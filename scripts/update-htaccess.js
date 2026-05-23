@@ -61,7 +61,7 @@ try {
         writeFileSync(distHtaccessPath, distHtaccess, 'utf-8');
         console.log(`✅ Updated dist/.htaccess with assets/${jsFilename}`);
       }
-    } catch (err) {
+    } catch (_err) {
       // Error reading/updating dist/.htaccess, that's okay
     }
   }

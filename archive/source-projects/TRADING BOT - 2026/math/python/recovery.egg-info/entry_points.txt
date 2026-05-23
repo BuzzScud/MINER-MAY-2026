@@ -1,2 +1,0 @@
-[console_scripts]
-recovery-cli = recovery.cli:main

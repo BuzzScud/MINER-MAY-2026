@@ -41,7 +41,7 @@ export function TradingBotView({ embedded = false }) {
     } catch {
       state.setSettings({});
     }
-  }, [state.setSettings]);
+  }, [state]);
 
   const runBacktest = async (params) => {
     await api.runBacktest(params);
@@ -115,7 +115,8 @@ export function TradingBotView({ embedded = false }) {
 
       {state.backendUnreachable && page === TAB_DASHBOARD && (
         <div className="mb-2 px-3 py-2 rounded text-sm bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200">
-          Trading Bot server (port 8080) is not running. Start it to load data: <code className="text-xs bg-amber-200/50 dark:bg-amber-800/50 px-1 rounded">npm run trading-bot:server</code> or see <code className="text-xs bg-amber-200/50 dark:bg-amber-800/50 px-1 rounded">docs/TRADING_BOT.md</code>.
+          Trading Bot server (port 8080) is not running. Start it to load data with{' '}
+          <code className="text-xs bg-amber-200/50 dark:bg-amber-800/50 px-1 rounded">npm run trading-bot:server</code>.
         </div>
       )}
 

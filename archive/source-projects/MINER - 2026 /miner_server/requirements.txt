@@ -1,3 +1,0 @@
-# Minimal: stdlib for RPC (urllib) and hashing (hashlib).
-# Web UI server:
-flask>=2.0

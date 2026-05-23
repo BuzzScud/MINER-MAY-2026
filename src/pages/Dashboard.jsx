@@ -709,7 +709,7 @@ function SortableStockCard({ id, symbol, data, loading, onRemove, showTooltips =
 }
 
 // Stock Info Card Component
-function StockInfoCard({ symbol, data, loading, onRemove }) {
+function StockInfoCard({ symbol, data, loading, onRemove, showTooltips = true }) {
   if (loading) {
     return (
       <div className="relative group bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2.5">
@@ -1008,7 +1008,7 @@ function Dashboard() {
         getStockPrice(symbolConfig.api).then(data => ({
           ...data,
           displaySymbol: symbolConfig.display,
-        })).catch(error => ({
+        })).catch(_error => ({
           symbol: symbolConfig.display,
           displaySymbol: symbolConfig.display,
           price: null,

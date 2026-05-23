@@ -39,3 +39,8 @@ backend/miner_server/data/nonces_tried.json
 backend/miner_server/data/mining_activity.log
 backend/miner_server/data/search_mode.jsonl
 !backend/miner_server/data/.gitkeep
+
+# Local-only reference material (not part of the application)
+archive/
+docs/
+Strategy Documents/

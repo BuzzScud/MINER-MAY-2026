@@ -8,14 +8,11 @@ import { OverviewPanel } from './panels/OverviewPanel';
 import { LatencyPanel } from './panels/LatencyPanel';
 import { EndpointDetailPanel } from './panels/EndpointDetailPanel';
 import { ConnectionLogPanel } from './panels/ConnectionLogPanel';
-import { CHECK_ENDPOINTS } from './api/healthChecks';
-
-const configMap = Object.fromEntries(CHECK_ENDPOINTS.map((c) => [c.id, c]));
 
 export function ApiMonitorView() {
   const { generalSettings } = useSettings();
   const showTooltips = generalSettings?.showTooltips ?? true;
-  const { endpoints, isLoading, error, refetch, lastCheck } = useApiHealthChecks();
+  const { endpoints, isLoading, error, refetch } = useApiHealthChecks();
   const connectionHistory = useConnectionHistory();
   const { pushResults } = connectionHistory;
   const [testLoadingId, setTestLoadingId] = useState(null);

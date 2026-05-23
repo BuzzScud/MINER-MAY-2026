@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import * as api from '../api/tradingBotApi';
 import { fmt, fmtPct } from '../utils/formatters';
 import { EquityChart } from './EquityChart';
 
@@ -44,7 +43,6 @@ export function BacktestPanel({ backtestProgress, backtestResult, setBacktestRes
   const metrics = result?.metrics || {};
   const tradeDetails = result?.trade_details || [];
   const equityChartData = result?.equity_chart_data || [];
-  const paramsUsed = result?.params || {};
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0 overflow-hidden">

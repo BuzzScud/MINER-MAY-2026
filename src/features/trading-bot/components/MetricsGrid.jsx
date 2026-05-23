@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react';
 import { fmt, fmtPct } from '../utils/formatters';
 
 const METRICS = [
-  { key: 'equity', label: 'Equity', format: (v, m) => (v != null ? '$' + fmt(v, 2) : '—'), getVal: (e) => e?.equity },
+  { key: 'equity', label: 'Equity', format: (v) => (v != null ? '$' + fmt(v, 2) : '—'), getVal: (e) => e?.equity },
   { key: 'sharpe', label: 'Sharpe', format: (v) => (v != null ? fmt(v, 3) : '—'), getVal: (e) => e?.metrics?.sharpe },
   { key: 'sortino', label: 'Sortino', format: (v) => (v != null ? fmt(v, 3) : '—'), getVal: (e) => e?.metrics?.sortino },
   { key: 'calmar', label: 'Calmar', format: (v) => (v != null ? fmt(v, 3) : '—'), getVal: (e) => e?.metrics?.calmar },
