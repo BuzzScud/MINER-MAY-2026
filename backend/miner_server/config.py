@@ -16,6 +16,35 @@ from typing import Optional
 # Default 8 workers for throughput; set BTC_QUADRANT_MODE=1 or BTC_NUM_WORKERS=4 for thesis quadrant.
 QUADRANT_WORKERS = 4
 
+SEARCH_MODE_THESIS = "thesis"
+SEARCH_MODE_LINEAR = "linear"
+SEARCH_MODE_HYBRID = "hybrid"
+VALID_SEARCH_MODES = (SEARCH_MODE_THESIS, SEARCH_MODE_LINEAR, SEARCH_MODE_HYBRID)
+DEFAULT_AUTO_ROUND_RESTART_SEC = 600
+DEFAULT_MINING_ADDRESS = "bc1q578vf2hd0vrtr6hf83ag4e4q3dwx0u0aeyjvzv"
+
+
+def normalize_search_mode(mode: Optional[str]) -> str:
+    """Return thesis | linear | hybrid."""
+    m = (mode or search_mode_from_env()).strip().lower()
+    if m in (SEARCH_MODE_LINEAR, SEARCH_MODE_HYBRID):
+        return m
+    return SEARCH_MODE_THESIS
+
+
+def search_mode_from_env() -> str:
+    return normalize_search_mode(os.environ.get("BTC_SEARCH_MODE", "thesis"))
+
+
+def effective_phase3_count(config: "MinerConfig") -> int:
+    """Phase 3 linear sweep count for hybrid/benchmark sessions."""
+    if config.phase3_override is not None:
+        return max(0, int(config.phase3_override))
+    count = phase3_nonces_per_worker()
+    if config.search_mode == SEARCH_MODE_HYBRID and count == 0:
+        return 65536
+    return count
+
 
 def use_c_nonce() -> bool:
     """True to use C libalgorithms for base nonce; False to use pure Python only (lower memory per worker).
@@ -35,26 +64,51 @@ def use_c_hasher() -> bool:
     return os.environ.get("BTC_USE_C_HASHER", "1").strip().lower() not in ("0", "false", "no")
 
 
-PHASE3_DEFAULT_NONCES_PYTHON = 500_000
-PHASE3_DEFAULT_NONCES_C = 500_000_000
-
-
 def phase3_nonces_per_worker() -> int:
-    """Nonces per worker for Phase 3 linear sweep. 0 to disable Phase 3.
-    Set BTC_PHASE3_NONCES_PER_WORKER=0 for thesis-pure mode (no linear sweep).
-    When C hasher is available (BTC_USE_C_HASHER=1), default jumps from 500K to
-    500M per worker — enough for 8 workers to cover the full 32-bit nonce space."""
+    """Nonces per worker for optional legacy linear sweep after thesis candidates.
+
+    Default is 0: the pipeline is thesis-only (sphere hopping, polar lattice,
+    entropy-reduced base/recovery, ordered candidate list). No brute-force linear
+    fallback unless explicitly enabled.
+
+    Set BTC_PHASE3_NONCES_PER_WORKER to a positive integer to add a linear sweep
+    segment per timestamp (legacy / benchmarking only).
+    """
     explicit = os.environ.get("BTC_PHASE3_NONCES_PER_WORKER", "").strip()
-    if explicit:
-        if explicit.lower() in ("0", "false", "no"):
-            return 0
-        try:
-            return max(0, int(explicit))
-        except ValueError:
-            pass
-    if use_c_hasher():
-        return PHASE3_DEFAULT_NONCES_C
-    return PHASE3_DEFAULT_NONCES_PYTHON
+    if not explicit:
+        return 0
+    if explicit.lower() in ("0", "false", "no"):
+        return 0
+    try:
+        return max(0, int(explicit))
+    except ValueError:
+        return 0
+
+
+def dry_run_enabled() -> bool:
+    """True when BTC_DRY_RUN=1 — self-test/probe only, no mining thread."""
+    return os.environ.get("BTC_DRY_RUN", "0").strip().lower() in ("1", "true", "yes")
+
+
+def supt_logging_enabled() -> bool:
+    """True unless BTC_SUPT_LOG=0. Default ON for SUPT dual-stream CSV logging."""
+    return os.environ.get("BTC_SUPT_LOG", "1").strip().lower() not in ("0", "false", "no")
+
+
+def supt_sample_every() -> int:
+    """Sample every Nth hash into Stream A (default 64, matching BTC STUFF supt_miner)."""
+    try:
+        return max(1, int(os.environ.get("BTC_SUPT_SAMPLE_EVERY", "64")))
+    except ValueError:
+        return 64
+
+
+def supt_data_dir() -> str:
+    """Directory for nonce_hash_stream.csv and block_cadence.csv."""
+    raw = os.environ.get("BTC_SUPT_DATA_DIR", "").strip()
+    if raw:
+        return os.path.abspath(raw)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
 
 def default_num_workers() -> int:
@@ -257,18 +311,24 @@ class MinerConfig:
     rpc_password: str = ""
     rpc_timeout: int = 30
     network: str = "regtest"
-    mining_address: str = "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4"
+    mining_address: str = DEFAULT_MINING_ADDRESS
     num_threads: int = 1
     num_workers: int = 8  # default 8; 4 = thesis quadrant partition (500D); overridden by env/CLI
     use_unified: bool = True
+    search_mode: str = SEARCH_MODE_THESIS  # thesis | linear | hybrid
+    phase3_override: Optional[int] = None  # per-session Phase 3 linear sweep (hybrid / benchmark)
     single_nonce_only: bool = False  # Thesis validation: try only 1–2 entropy-reduced nonces, no expansion
     rpc_cookie_file: Optional[str] = None
     rpc_datadir: Optional[str] = None
     verbose: int = 0
+    dry_run: bool = False
+    auto_round_restart_sec: int = 0  # 0 = off; e.g. 600 ends round for Stream B cadence logging
 
     def __post_init__(self) -> None:
         if self.rpc_port <= 0:
             self.rpc_port = _default_port(self.network)
+        self.search_mode = normalize_search_mode(self.search_mode)
+        self.use_unified = self.search_mode in (SEARCH_MODE_THESIS, SEARCH_MODE_HYBRID)
 
     @property
     def rpc_url(self) -> str:
@@ -311,10 +371,11 @@ def load_config_from_env() -> MinerConfig:
         rpc_password=os.environ.get("BTC_RPC_PASSWORD", ""),
         rpc_timeout=int(os.environ.get("BTC_RPC_TIMEOUT", "30")),
         network=network,
-        mining_address=os.environ.get("BTC_MINING_ADDRESS", "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4"),
+        mining_address=os.environ.get("BTC_MINING_ADDRESS", DEFAULT_MINING_ADDRESS),
         num_threads=max(1, int(os.environ.get("BTC_NUM_THREADS", "1"))),
         num_workers=num_workers,
         use_unified=os.environ.get("BTC_USE_UNIFIED", "1").strip() in ("1", "true", "yes"),
+        search_mode=search_mode_from_env(),
         single_nonce_only=os.environ.get("BTC_SINGLE_NONCE_ONLY", "0").strip() in ("1", "true", "yes"),
         rpc_cookie_file=os.environ.get("BTC_COOKIE_FILE") or None,
         rpc_datadir=os.environ.get("BTC_DATADIR") or None,

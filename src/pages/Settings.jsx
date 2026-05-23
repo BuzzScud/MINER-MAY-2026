@@ -728,29 +728,34 @@ function PrivacyTab({ showSaveStatus }) {
 
 /* ── Main component ─────────────────────────────────────────────────── */
 
-function Settings() {
+function Settings({ embedded = false }) {
   const { token, user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [embeddedTab, setEmbeddedTab] = useState('general');
   const [saveStatus, setSaveStatus] = useState({ message: '', type: '' });
 
   const canAccessApiKeys = user?.is_admin === true;
   const visibleTabs = canAccessApiKeys ? TABS : TABS.filter((t) => t.id !== 'api-keys');
   const tabFromUrl = searchParams.get('tab') || 'general';
   const activeTab = (() => {
-    if (!visibleTabs.some((t) => t.id === tabFromUrl)) return 'general';
-    if (tabFromUrl === 'api-keys' && !canAccessApiKeys) return 'general';
-    return tabFromUrl;
+    const sourceTab = embedded ? embeddedTab : tabFromUrl;
+    if (!visibleTabs.some((t) => t.id === sourceTab)) return 'general';
+    if (sourceTab === 'api-keys' && !canAccessApiKeys) return 'general';
+    return sourceTab;
   })();
 
   useEffect(() => {
-    if (tabFromUrl === 'api-keys' && !canAccessApiKeys && searchParams.get('tab')) {
-      setSearchParams({}, { replace: true });
-    }
-  }, [tabFromUrl, canAccessApiKeys, searchParams, setSearchParams]);
+    if (embedded || tabFromUrl !== 'api-keys' || canAccessApiKeys || !searchParams.get('tab')) return;
+    setSearchParams({}, { replace: true });
+  }, [tabFromUrl, canAccessApiKeys, searchParams, setSearchParams, embedded]);
 
   const setTab = useCallback((id) => {
+    if (embedded) {
+      setEmbeddedTab(id);
+      return;
+    }
     setSearchParams(id === 'general' ? {} : { tab: id }, { replace: true });
-  }, [setSearchParams]);
+  }, [embedded, setSearchParams]);
 
   const showSaveStatus = useCallback((message, type) => {
     setSaveStatus({ message, type });
@@ -795,27 +800,31 @@ function Settings() {
   }, [setTab, showSaveStatus, token]);
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto px-4 flex flex-col h-full min-h-0 overflow-hidden">
-      <nav className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-2 flex-shrink-0">
-        <Link to="/" className="hover:text-sky-400 dark:hover:text-sky-300 transition-colors">Dashboard</Link>
-        <span>/</span>
-        <span className="font-medium text-gray-900 dark:text-white">Settings</span>
-        {activeTab !== 'general' && (
-          <>
-            <span>/</span>
-            <span className="font-medium text-gray-900 dark:text-white capitalize">{activeTab.replace('-', ' ')}</span>
-          </>
-        )}
-      </nav>
+    <div className={`w-full flex flex-col min-h-0 overflow-hidden ${embedded ? '' : 'max-w-[1400px] mx-auto px-4 h-full'}`}>
+      {!embedded && (
+        <nav className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-2 flex-shrink-0">
+          <Link to="/" className="hover:text-sky-400 dark:hover:text-sky-300 transition-colors">Dashboard</Link>
+          <span>/</span>
+          <span className="font-medium text-gray-900 dark:text-white">Settings</span>
+          {activeTab !== 'general' && (
+            <>
+              <span>/</span>
+              <span className="font-medium text-gray-900 dark:text-white capitalize">{activeTab.replace('-', ' ')}</span>
+            </>
+          )}
+        </nav>
+      )}
 
-      <header className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-shrink-0">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Preferences, API keys, and app configuration
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
+      <header className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-shrink-0 ${embedded ? 'mb-3' : 'mb-4'}`}>
+        {!embedded && (
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Preferences, API keys, and app configuration
+            </p>
+          </div>
+        )}
+        <div className={`flex items-center gap-3 ${embedded ? 'w-full justify-end' : ''}`}>
           {saveStatus.message && (
             <span className={`text-xs font-medium flex items-center gap-1.5 ${
               saveStatus.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'

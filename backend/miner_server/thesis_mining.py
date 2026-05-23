@@ -767,6 +767,7 @@ def build_candidate_list(
     start_nonce: int,
     end_nonce: int,
     quadrant_id: Optional[int] = None,
+    block_height: Optional[int] = None,
 ) -> list[int]:
     """
     Build candidate nonces using sphere hopping, duality ordering, golden-ratio spiral.
@@ -781,6 +782,7 @@ def build_candidate_list(
     When quadrant_id is set, C path is skipped (Python-only) so each worker builds only
     its quadrant's candidates.
     When BTC_USE_C_CANDIDATES=1 and libalgorithms is loaded, uses C build_candidate_list_sphere.
+    block_height: chain height for polar lattice phase (Layer E); omit or None uses 0.
     """
     if quadrant_id is None and use_c_candidates() and _load_libnonce() and _libnonce is not False:
         fn = getattr(_libnonce, "build_candidate_list_sphere", None)
@@ -885,8 +887,9 @@ def build_candidate_list(
     # Nonce candidates from the lattice positions (r, θ) of the first 10
     # primes, including conjugate harmonics and cascade amplification at
     # the back-reaction prime (167) and Q-product (231 = 3×7×11).
-    # Uses base_nonce as the per-block phase seed.
-    polar_cands = _polar_lattice_candidates(base_nonce, base_nonce)
+    # block_height modulates the phase (per-block); base_nonce is the seed.
+    _bh = 0 if block_height is None else int(block_height) & 0xFFFFFFFF
+    polar_cands = _polar_lattice_candidates(base_nonce, _bh)
     for pc in polar_cands:
         add(pc)
 

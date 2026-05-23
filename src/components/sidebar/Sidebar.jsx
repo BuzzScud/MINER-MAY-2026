@@ -1,6 +1,7 @@
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAppModals } from '../../contexts/AppModalsContext';
 import { useStorage } from '../../utils/storage';
 import { STORAGE_KEYS } from '../../utils/storageKeys';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core';
@@ -12,13 +13,8 @@ const SIDEBAR_NAV_KEY = STORAGE_KEYS.SIDEBAR_NAV;
 
 const ALL_PAGES = [
   { path: '/', label: 'Dashboard' },
-  { path: '/accounts', label: 'Accounts' },
-  { path: '/calendar', label: 'Economic Calendar' },
+  { path: '/checklist', label: 'Checklist' },
   { path: '/trading', label: 'Charts' },
-  { path: '/projection', label: 'Projection' },
-
-  { path: '/sentiment', label: 'Sentiment' },
-  { path: '/budget-tracker', label: 'Budget Tracker' },
   { path: '/miner', label: 'Miner' },
   { path: '/api-monitor', label: 'API Monitor' },
   { path: '/settings', label: 'Settings' },
@@ -32,34 +28,14 @@ const PAGE_ICONS = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
     </svg>
   ),
-  '/calendar': (
+  '/checklist': (
     <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-    </svg>
-  ),
-  '/accounts': (
-    <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a5 5 0 00-10 0v2M5 9h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
     </svg>
   ),
   '/trading': (
     <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-    </svg>
-  ),
-  '/projection': (
-    <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-    </svg>
-  ),
-  '/sentiment': (
-    <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm-3-7a3 3 0 01-3-3 3 3 0 013-3 3 3 0 013 3 3 3 0 01-3 3zm4-8a4 4 0 11-8 0 4 4 0 018 0z" />
-    </svg>
-  ),
-  '/budget-tracker': (
-    <svg className={ICON_CLASS} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2h-2a2 2 0 00-2 2v6a2 2 0 002 2zm-12-2a2 2 0 002-2V7a2 2 0 012-2h2a2 2 0 012 2v6a2 2 0 01-2 2H7a2 2 0 01-2-2z" />
     </svg>
   ),
   '/miner': (
@@ -82,18 +58,17 @@ const PAGE_ICONS = {
 
 function getDefaultSections() {
   return [
-    { id: 'dashboard', label: 'Dashboard', pagePaths: ['/', '/accounts', '/calendar'] },
-    { id: 'markets', label: 'Markets', pagePaths: ['/sentiment', '/trading', '/projection'] },
+    { id: 'dashboard', label: 'Dashboard', pagePaths: ['/', '/checklist'] },
+    { id: 'markets', label: 'Markets', pagePaths: ['/trading'] },
     { id: 'crypto', label: 'Crypto', pagePaths: ['/miner'] },
-    { id: 'utilities', label: 'Utilities', pagePaths: ['/budget-tracker'] },
     { id: 'settings', label: 'Settings', pagePaths: ['/api-monitor', '/settings'] },
   ];
 }
 
-/** Old saves had only dashboard + uncategorized + settings; new default has markets, crypto, utilities. */
+/** Old saves had only dashboard + uncategorized + settings; new default has markets and crypto. */
 function isLegacySidebarLayout(sections) {
   const ids = new Set(sections.map((s) => s.id));
-  return !ids.has('markets') || !ids.has('crypto') || !ids.has('utilities');
+  return !ids.has('markets') || !ids.has('crypto');
 }
 
 function parseSections(saved) {
@@ -138,11 +113,36 @@ function ensureSettingsLast(sections) {
   return [...rest, settings];
 }
 
-function NavItem({ path, label, location, onClose, icon }) {
-  const isActive =
-    path === '/'
+function NavItem({ path, label, location, onClose, icon, onOpenSettings, settingsOpen }) {
+  const isSettingsPath = path === '/settings';
+  const isActive = isSettingsPath
+    ? settingsOpen
+    : path === '/'
       ? location.pathname === '/' || location.pathname === '/dashboard'
       : location.pathname === path || location.pathname.startsWith(path + '/');
+
+  if (isSettingsPath) {
+    return (
+      <li>
+        <button
+          type="button"
+          onClick={() => {
+            onOpenSettings();
+            if (window.innerWidth < 1024 && onClose) onClose();
+          }}
+          className={`w-full flex items-center gap-x-2.5 py-2.5 px-3 text-sm rounded-r-md border-l-2 transition-colors ${
+            isActive
+              ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+              : 'border-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+          }`}
+        >
+          {icon && <span className="flex-shrink-0 [&>svg]:w-4 [&>svg]:h-4">{icon}</span>}
+          <span className="truncate">{label}</span>
+        </button>
+      </li>
+    );
+  }
+
   return (
     <li>
       <NavLink
@@ -163,12 +163,14 @@ function NavItem({ path, label, location, onClose, icon }) {
   );
 }
 
-function SortableNavItem({ path, label, location, onClose, icon }) {
+function SortableNavItem({ path, label, location, onClose, icon, onOpenSettings, settingsOpen }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: path,
   });
-  const isActive =
-    path === '/'
+  const isSettingsPath = path === '/settings';
+  const isActive = isSettingsPath
+    ? settingsOpen
+    : path === '/'
       ? location.pathname === '/' || location.pathname === '/dashboard'
       : location.pathname === path || location.pathname.startsWith(path + '/');
   const style = {
@@ -188,6 +190,23 @@ function SortableNavItem({ path, label, location, onClose, icon }) {
             <path d="M8 6h2v2H8V6zm6 0h2v2h-2V6zm-6 6h2v2H8v-2zm6 0h2v2h-2v-2zm-6 6h2v2H8v-2zm6 0h2v2h-2v-2z" />
           </svg>
         </span>
+        {isSettingsPath ? (
+          <button
+            type="button"
+            onClick={() => {
+              onOpenSettings();
+              if (window.innerWidth < 1024 && onClose) onClose();
+            }}
+            className={`flex-1 min-w-0 flex items-center gap-x-2.5 py-2.5 px-3 text-sm rounded-r-md border-l-2 transition-colors ${
+              isActive
+                ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+                : 'border-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+            }`}
+          >
+            {icon && <span className="flex-shrink-0 [&>svg]:w-4 [&>svg]:h-4">{icon}</span>}
+            <span className="truncate">{label}</span>
+          </button>
+        ) : (
         <NavLink
           to={path}
           onClick={() => {
@@ -202,6 +221,7 @@ function SortableNavItem({ path, label, location, onClose, icon }) {
           {icon && <span className="flex-shrink-0 [&>svg]:w-4 [&>svg]:h-4">{icon}</span>}
           <span className="truncate">{label}</span>
         </NavLink>
+        )}
       </div>
     </li>
   );
@@ -222,6 +242,7 @@ function SectionDroppable({ id, children, className }) {
 function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { openSettings, settingsOpen } = useAppModals();
   const { getItem, setItem } = useStorage();
 
   const [darkMode, setDarkMode] = useState(false);
@@ -551,6 +572,8 @@ function Sidebar({ isOpen, onClose }) {
                                 location={location}
                                 onClose={onClose}
                                 icon={PAGE_ICONS[path]}
+                                onOpenSettings={openSettings}
+                                settingsOpen={settingsOpen}
                               />
                             ) : (
                               <NavItem
@@ -560,6 +583,8 @@ function Sidebar({ isOpen, onClose }) {
                                 location={location}
                                 onClose={onClose}
                                 icon={PAGE_ICONS[path]}
+                                onOpenSettings={openSettings}
+                                settingsOpen={settingsOpen}
                               />
                             )
                           ))}
@@ -749,6 +774,8 @@ function Sidebar({ isOpen, onClose }) {
                                           location={location}
                                           onClose={onClose}
                                           icon={PAGE_ICONS[path]}
+                                          onOpenSettings={openSettings}
+                                          settingsOpen={settingsOpen}
                                         />
                                       ))
                                     )}
@@ -781,6 +808,8 @@ function Sidebar({ isOpen, onClose }) {
                                         location={location}
                                         onClose={onClose}
                                         icon={PAGE_ICONS[path]}
+                                        onOpenSettings={openSettings}
+                                        settingsOpen={settingsOpen}
                                       />
                                     ))
                                   )}

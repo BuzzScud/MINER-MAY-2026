@@ -22,11 +22,35 @@ import sys
 import time
 from typing import Any, Callable, Optional
 
-from config import MinerConfig, phase3_nonces_per_worker
+from config import (
+    MinerConfig,
+    SEARCH_MODE_LINEAR,
+    effective_phase3_count,
+    phase3_nonces_per_worker,
+    supt_sample_every,
+)
+
+_active_auto_round_restart_sec = 0
+
+
+def set_auto_round_restart_sec(seconds: int) -> None:
+    """Live toggle: 0 disables timed round rollover."""
+    global _active_auto_round_restart_sec
+    _active_auto_round_restart_sec = max(0, int(seconds))
+
+
+def get_auto_round_restart_sec() -> int:
+    return _active_auto_round_restart_sec
+
+
+def _round_duration_exceeded(round_t0: float) -> bool:
+    limit = get_auto_round_restart_sec()
+    return limit > 0 and (time.time() - round_t0) >= limit
 from btc_rpc import getblocktemplate, submitblock, BitcoinRPCError
 from address import address_to_script_pubkey
 from hasher_bridge import scan_batch as _c_scan_batch, scan_list as _c_scan_list, is_available as _c_hasher_available, get_hasher_source
 from nonce_logger import log_nonce_round
+import supt_streams
 from thesis_mining import (
     bits_compact_to_difficulty_bits,
     nonce_generate_unified_py,
@@ -48,6 +72,53 @@ TIMESTAMP_ROLL_MAX = 60
 # Extra-nonce rolling: max number of coinbase extra-nonce increments per template.
 # Each increment changes the coinbase txid and merkle root, giving a new nonce space.
 EXTRA_NONCE_ROLL_MAX = 16
+
+
+def _supt_sample(round_id: int, nonce: int, hash_bytes: bytes, *, from_worker: bool = False) -> None:
+    if round_id < 0 or not supt_streams.is_enabled():
+        return
+    if nonce % supt_sample_every() != 0:
+        return
+    if from_worker:
+        supt_streams.enqueue_sample(round_id, nonce, hash_bytes)
+    else:
+        supt_streams.sample_hash(round_id, nonce, hash_bytes)
+
+
+def _supt_sample_candidates_for_stream_a(
+    round_id: int,
+    version: int,
+    prev_hex: str,
+    merkle_root: bytes,
+    time_val: int,
+    bits_hex: str,
+    nonces: list[int],
+    *,
+    from_worker: bool = False,
+) -> None:
+    """Sample Stream A for candidate nonces (used after C batch scan paths)."""
+    if round_id < 0 or not supt_streams.is_enabled():
+        return
+    step = supt_sample_every()
+    for nonce in nonces:
+        if nonce % step != 0:
+            continue
+        header = _build_block_header(version, prev_hex, merkle_root, time_val, bits_hex, nonce)
+        h = _double_sha256(header)
+        _supt_sample(round_id, nonce, h, from_worker=from_worker)
+
+
+def _supt_finish_round(
+    round_id: int,
+    round_t0: float,
+    hashes_done: int,
+    blocks_found: int,
+    winning_nonce: Optional[int] = None,
+) -> tuple[int, int]:
+    if round_id >= 0:
+        nonce_found = winning_nonce if blocks_found and winning_nonce is not None else -1
+        supt_streams.end_round(round_id, nonce_found, hashes_done, time.time() - round_t0)
+    return hashes_done, blocks_found
 
 
 def _uint32_le(n: int) -> bytes:
@@ -318,11 +389,19 @@ def run_mining_loop(
     bits_le = struct.pack("<I", int(bits_hex, 16))
 
     if on_log:
-        on_log(f"Template: height {height}, bits {bits_hex}")
-        on_log("Linear search: full 32-bit nonce range.")
+        on_log(f"[linear] Template: height {height}, bits {bits_hex}")
+        on_log("[linear] Linear search: full 32-bit nonce range.")
+
+    round_id = supt_streams.begin_round(height, search_mode=getattr(config, "search_mode", "linear"))
+    round_t0 = time.time()
+    winning_nonce: Optional[int] = None
 
     for nonce in range(nonce_start, nonce_end):
         if stop_flag and stop_flag():
+            break
+        if nonce % 4096 == 0 and _round_duration_exceeded(round_t0):
+            if on_log:
+                on_log(f"[linear] Auto round restart ({get_auto_round_restart_sec()}s elapsed).")
             break
         header = _build_block_header(
             version, prev_hex, merkle_root, curtime, bits_hex, nonce
@@ -338,11 +417,12 @@ def run_mining_loop(
             )
         h = _double_sha256(header)
         hashes_done += 1
+        _supt_sample(round_id, nonce, h)
         if on_hash:
             on_hash(hashes_done)
         if _hash_meets_target(h, target):
             if on_log:
-                on_log(f"Solution found ({hashes_done} hashes).")
+                on_log(f"[linear] Solution found ({hashes_done} hashes).")
             # Bitcoin block format: 80-byte header + varint(tx_count) + coinbase + other txs
             n_tx = 1 + len(tx_raws_for_block)
             full_block = header + _varint(n_tx) + coinbase_for_block + b"".join(tx_raws_for_block)
@@ -350,10 +430,11 @@ def run_mining_loop(
             result = submitblock(config, hex_block)
             if result is None:
                 blocks_found += 1
+                winning_nonce = nonce
             elif on_log:
-                on_log(f"Submit block rejected: {result}")
+                on_log(f"[linear] Submit block rejected: {result}")
             break
-    return hashes_done, blocks_found
+    return _supt_finish_round(round_id, round_t0, hashes_done, blocks_found, winning_nonce)
 
 
 def run_mining_loop_unified(
@@ -363,8 +444,9 @@ def run_mining_loop_unified(
     on_log: Optional[Callable[[str], None]] = None,
 ) -> tuple[int, int]:
     """
-    Unified mining: deterministic base nonce, recovery, sphere hopping, duality ordering.
-    Phase 1 minimal nonces, then Phase 2 thesis candidates only; no linear fallback.
+    Unified mining: deterministic base nonce, recovery, sphere hopping, duality ordering,
+    polar lattice, and ordered thesis candidate list. Optional Phase 3 linear sweep only
+    when BTC_PHASE3_NONCES_PER_WORKER > 0 (default 0: no linear fallback).
     """
     if not config.mining_address:
         raise ValueError("BTC_MINING_ADDRESS or mining_address required")
@@ -427,37 +509,45 @@ def run_mining_loop_unified(
     hashes_done = 0
 
     if on_log:
-        on_log(f"Template: height {height}, bits {bits_hex}")
+        on_log(f"[{config.search_mode}] Template: height {height}, bits {bits_hex}")
 
-    # Phase 1: single-nonce-first (1-2 hashes from entropy-reduced minimal set)
+    round_id = supt_streams.begin_round(height, search_mode=config.search_mode)
+    round_t0 = time.time()
+
     minimal_nonces = get_minimal_nonce_list(height, difficulty_bits, bits_bytes)
-    if on_log:
-        on_log(f"Phase 1: trying {len(minimal_nonces)} minimal nonce(s).")
-    for nonce in minimal_nonces:
-        if stop_flag and stop_flag():
-            break
-        header = _build_block_header(
-            version, prev_hex, merkle_root, curtime, bits_hex, nonce
-        )
-        h = _double_sha256(header)
-        hashes_done += 1
-        if on_hash:
-            on_hash(hashes_done)
-        if _hash_meets_target(h, target):
-            if on_log:
-                on_log(f"Phase 1: solution found ({hashes_done} hash(es)).")
-            n_tx = 1 + len(tx_raws_for_block)
-            full_block = header + _varint(n_tx) + coinbase_for_block + b"".join(tx_raws_for_block)
-            result = submitblock(config, full_block.hex())
-            if result is None:
-                blocks_found = 1
-            elif on_log:
-                on_log(f"Submit block rejected: {result}")
-            return hashes_done, blocks_found
-    if on_log:
-        on_log(f"Phase 1: {hashes_done} hash(es), no solution.")
     if config.single_nonce_only:
-        return hashes_done, blocks_found
+        if on_log:
+            on_log(f"Single-nonce mode: trying {len(minimal_nonces)} entropy-reduced nonce(s) only.")
+        for nonce in minimal_nonces:
+            if stop_flag and stop_flag():
+                break
+            header = _build_block_header(
+                version, prev_hex, merkle_root, curtime, bits_hex, nonce
+            )
+            h = _double_sha256(header)
+            hashes_done += 1
+            _supt_sample(round_id, nonce, h)
+            if on_hash:
+                on_hash(hashes_done)
+            if _hash_meets_target(h, target):
+                if on_log:
+                    on_log(f"Solution found in minimal set ({hashes_done} hash(es)).")
+                n_tx = 1 + len(tx_raws_for_block)
+                full_block = header + _varint(n_tx) + coinbase_for_block + b"".join(tx_raws_for_block)
+                result = submitblock(config, full_block.hex())
+                if result is None:
+                    blocks_found = 1
+                elif on_log:
+                    on_log(f"Submit block rejected: {result}")
+                return _supt_finish_round(round_id, round_t0, hashes_done, blocks_found, nonce)
+        if on_log:
+            on_log(f"Single-nonce mode: {hashes_done} hash(es), no solution.")
+        return _supt_finish_round(round_id, round_t0, hashes_done, blocks_found)
+
+    if on_log:
+        on_log(
+            f"Thesis pipeline: full candidate search (anchors {len(minimal_nonces)}: merged into ordered list; no separate 1–2 hash pass)."
+        )
 
     base_nonce = nonce_generate_unified_py(height, difficulty_bits)
     recovery_nonce = recovery_suggested_nonce(bits_bytes)
@@ -465,7 +555,7 @@ def run_mining_loop_unified(
         recovery_nonce = base_nonce
 
     candidates = build_candidate_list(
-        base_nonce, recovery_nonce, 0, NONCE_SPACE
+        base_nonce, recovery_nonce, 0, NONCE_SPACE, block_height=height
     )
     log_nonce_round(
         height, bits_hex, base_nonce, recovery_nonce,
@@ -499,16 +589,22 @@ def run_mining_loop_unified(
             on_hash,
             stop_flag,
             on_log,
+            round_id,
+            round_t0,
         )
 
-    # Single-worker: Phase 2 + Phase 3 with timestamp rolling
-    phase3_count = phase3_nonces_per_worker()
+    # Single-worker: thesis candidates each timestamp; optional Phase 3 linear sweep
+    phase3_count = effective_phase3_count(config)
     current_time = curtime
     extra_nonce_counter = 0
     use_c = _c_hasher_available()
 
     while True:
         if stop_flag and stop_flag():
+            break
+        if _round_duration_exceeded(round_t0):
+            if on_log:
+                on_log(f"Auto round restart ({get_auto_round_restart_sec()}s elapsed).")
             break
 
         hdr_tpl = _build_header_template(version, prev_hex, merkle_root, current_time, bits_hex)
@@ -520,6 +616,9 @@ def run_mining_loop_unified(
         if use_c:
             hit = _c_scan_list(hdr_tpl, target, candidates)
             hashes_done += len(candidates)
+            _supt_sample_candidates_for_stream_a(
+                round_id, version, prev_hex, merkle_root, current_time, bits_hex, candidates
+            )
             if on_hash:
                 on_hash(hashes_done)
             if hit is not None:
@@ -534,7 +633,7 @@ def run_mining_loop_unified(
                     blocks_found = 1
                 elif on_log:
                     on_log(f"Submit block rejected: {result}")
-                return hashes_done, blocks_found
+                return _supt_finish_round(round_id, round_t0, hashes_done, blocks_found, winning_nonce)
         else:
             for nonce in candidates:
                 if stop_flag and stop_flag():
@@ -544,6 +643,7 @@ def run_mining_loop_unified(
                 )
                 h = _double_sha256(header)
                 hashes_done += 1
+                _supt_sample(round_id, nonce, h)
                 if on_hash:
                     on_hash(hashes_done)
                 if _hash_meets_target(h, target):
@@ -556,7 +656,7 @@ def run_mining_loop_unified(
                         blocks_found = 1
                     elif on_log:
                         on_log(f"Submit block rejected: {result}")
-                    return hashes_done, blocks_found
+                    return _supt_finish_round(round_id, round_t0, hashes_done, blocks_found, nonce)
 
         # Phase 3: linear sweep (C batch or Python loop)
         if phase3_count > 0:
@@ -588,7 +688,7 @@ def run_mining_loop_unified(
                             blocks_found = 1
                         elif on_log:
                             on_log(f"Submit block rejected: {result}")
-                        return hashes_done, blocks_found
+                        return _supt_finish_round(round_id, round_t0, hashes_done, blocks_found, winner)
             else:
                 for i in range(phase3_count):
                     if stop_flag and stop_flag():
@@ -599,6 +699,7 @@ def run_mining_loop_unified(
                     )
                     h = _double_sha256(header)
                     hashes_done += 1
+                    _supt_sample(round_id, nonce, h)
                     if on_hash:
                         on_hash(hashes_done)
                     if _hash_meets_target(h, target):
@@ -611,7 +712,7 @@ def run_mining_loop_unified(
                             blocks_found = 1
                         elif on_log:
                             on_log(f"Submit block rejected: {result}")
-                        return hashes_done, blocks_found
+                        return _supt_finish_round(round_id, round_t0, hashes_done, blocks_found, nonce)
 
         # Timestamp rolling: increment time to get a fresh nonce space
         current_time += 1
@@ -627,7 +728,7 @@ def run_mining_loop_unified(
 
     if on_log:
         on_log(f"Round complete: {hashes_done} hashes, no solution.")
-    return hashes_done, blocks_found
+    return _supt_finish_round(round_id, round_t0, hashes_done, blocks_found)
 
 
 MP_PROGRESS_INTERVAL = 2000
@@ -652,7 +753,7 @@ def _mp_get_context():
 def _mp_worker_mine_range(args: tuple) -> None:
     """Top-level worker for multiprocessing (must be picklable).
     When num_workers == 4, partition thesis candidates by quadrant (500D lattice).
-    Phase 2: thesis candidates. Phase 3: linear sweep with timestamp rolling.
+    Each timestamp: thesis candidate scan first; optional Phase 3 linear sweep if env > 0.
     Base/recovery nonce are passed from main so workers do not load C libs.
     Workers return winning nonce only; main builds and submits full block.
     Force Python-only candidate list in workers to avoid loading libalgorithms in spawn.
@@ -679,12 +780,16 @@ def _mp_worker_mine_range(args: tuple) -> None:
         target,
         base_nonce,
         recovery_nonce,
+        round_id,
+        phase3_count,
     ) = args
     use_quadrant = num_workers == 4
     if use_quadrant:
         start_n = 0
         end_n = 0xFFFFFFFF + 1
-        cands = build_candidate_list(base_nonce, recovery_nonce, start_n, end_n, quadrant_id=worker_id)
+        cands = build_candidate_list(
+            base_nonce, recovery_nonce, start_n, end_n, quadrant_id=worker_id, block_height=height
+        )
     else:
         start_n = worker_id * chunk_size
         end_n = (
@@ -692,10 +797,13 @@ def _mp_worker_mine_range(args: tuple) -> None:
             if worker_id < num_workers - 1
             else 0xFFFFFFFF + 1
         )
-        cands = build_candidate_list(base_nonce, recovery_nonce, start_n, end_n)
+        cands = build_candidate_list(
+            base_nonce, recovery_nonce, start_n, end_n, block_height=height
+        )
     h_done = 0
     last_reported = 0
     use_c = _c_hasher_available()
+    p3_count = max(0, int(phase3_count))
 
     def _report_progress(force: bool = False) -> None:
         nonlocal last_reported
@@ -710,45 +818,54 @@ def _mp_worker_mine_range(args: tuple) -> None:
                 shared_hashes.value += h_done - last_reported
             last_reported = h_done
 
-    # Phase 2: thesis candidates (first timestamp only)
-    hdr_tpl = _build_header_template(version, prev_hex, merkle_root, curtime, bits_hex)
-    if use_c and cands:
-        hit = _c_scan_list(hdr_tpl, target, cands)
-        h_done += len(cands)
-        _report_progress()
-        if hit is not None:
-            winning_nonce, _idx = hit
-            _report_progress(force=True)
-            result_queue.put((h_done, 1, winning_nonce, curtime))
-            return
-    else:
-        for n in cands:
-            if stop_event.is_set():
-                _report_progress(force=True)
-                result_queue.put((h_done, 0, None, curtime))
-                return
-            header = _build_block_header(
-                version, prev_hex, merkle_root, curtime, bits_hex, n
-            )
-            h = _double_sha256(header)
-            h_done += 1
-            _report_progress()
-            if _hash_meets_target(h, target):
-                _report_progress(force=True)
-                result_queue.put((h_done, 1, n, curtime))
-                return
-
-    # Phase 3: linear sweep with timestamp rolling
-    p3_count = phase3_nonces_per_worker()
     current_time = curtime
-    while True:
+    while current_time <= maxtime:
         if stop_event.is_set():
-            break
+            _report_progress(force=True)
+            result_queue.put((h_done, 0, None, curtime))
+            return
+
+        hdr_tpl = _build_header_template(version, prev_hex, merkle_root, current_time, bits_hex)
+        if use_c and cands:
+            hit = _c_scan_list(hdr_tpl, target, cands)
+            h_done += len(cands)
+            _supt_sample_candidates_for_stream_a(
+                round_id,
+                version,
+                prev_hex,
+                merkle_root,
+                current_time,
+                bits_hex,
+                cands,
+                from_worker=True,
+            )
+            _report_progress()
+            if hit is not None:
+                winning_nonce, _idx = hit
+                _report_progress(force=True)
+                result_queue.put((h_done, 1, winning_nonce, current_time))
+                return
+        else:
+            for n in cands:
+                if stop_event.is_set():
+                    _report_progress(force=True)
+                    result_queue.put((h_done, 0, None, curtime))
+                    return
+                header = _build_block_header(
+                    version, prev_hex, merkle_root, current_time, bits_hex, n
+                )
+                h = _double_sha256(header)
+                h_done += 1
+                _supt_sample(round_id, n, h, from_worker=True)
+                _report_progress()
+                if _hash_meets_target(h, target):
+                    _report_progress(force=True)
+                    result_queue.put((h_done, 1, n, current_time))
+                    return
 
         if p3_count > 0:
             sweep_start = ((base_nonce + worker_id * p3_count) & 0xFFFFFFFF)
             hdr_tpl = _build_header_template(version, prev_hex, merkle_root, current_time, bits_hex)
-
             if use_c:
                 remaining = p3_count
                 offset = 0
@@ -780,6 +897,7 @@ def _mp_worker_mine_range(args: tuple) -> None:
                     )
                     h = _double_sha256(header)
                     h_done += 1
+                    _supt_sample(round_id, nonce, h, from_worker=True)
                     _report_progress()
                     if _hash_meets_target(h, target):
                         _report_progress(force=True)
@@ -787,8 +905,6 @@ def _mp_worker_mine_range(args: tuple) -> None:
                         return
 
         current_time += 1
-        if current_time > maxtime:
-            break
 
     _report_progress(force=True)
     result_queue.put((h_done, 0, None, curtime))
@@ -814,48 +930,55 @@ def _run_mining_loop_unified_mp(
     on_hash: Optional[Callable[[int], None]],
     stop_flag: Optional[Callable[[], bool]],
     on_log: Optional[Callable[[str], None]] = None,
+    round_id: int = -1,
+    round_t0: Optional[float] = None,
 ) -> tuple[int, int]:
-    """Multiprocessing variant: Phase 1 minimal nonces, then spawn workers for Phase 2."""
-    # Phase 1: try minimal nonce set (1–2 hashes) before spawning workers
+    """Multiprocessing variant: thesis candidate workers; optional Phase 3 linear sweep (env)."""
+    if round_t0 is None:
+        round_t0 = time.time()
     minimal_nonces = get_minimal_nonce_list(height, difficulty_bits, bits_bytes)
-    if on_log:
-        on_log(f"Phase 1: trying {len(minimal_nonces)} minimal nonce(s).")
     phase1_hashes = 0
-    for nonce in minimal_nonces:
-        if stop_flag and stop_flag():
-            return phase1_hashes, 0
-        header = _build_block_header(
-            version, prev_hex, merkle_root, curtime, bits_hex, nonce
-        )
-        h = _double_sha256(header)
-        phase1_hashes += 1
-        if on_hash:
-            on_hash(phase1_hashes)
-        if _hash_meets_target(h, target):
-            if on_log:
-                on_log(f"Phase 1: solution found ({phase1_hashes} hash(es)).")
-            n_tx = 1 + len(tx_raws_for_block)
-            full_block = header + _varint(n_tx) + coinbase_for_block + b"".join(tx_raws_for_block)
-            result = submitblock(config, full_block.hex())
-            if result is None:
-                return phase1_hashes, 1
-            if on_log:
-                on_log(f"Submit block rejected: {result}")
-            return phase1_hashes, 0
-    if on_log:
-        on_log(f"Phase 1: {phase1_hashes} hash(es), no solution.")
     if config.single_nonce_only:
-        return phase1_hashes, 0
+        if on_log:
+            on_log(f"Single-nonce mode: trying {len(minimal_nonces)} minimal nonce(s).")
+        for nonce in minimal_nonces:
+            if stop_flag and stop_flag():
+                return phase1_hashes, 0
+            header = _build_block_header(
+                version, prev_hex, merkle_root, curtime, bits_hex, nonce
+            )
+            h = _double_sha256(header)
+            phase1_hashes += 1
+            _supt_sample(round_id, nonce, h)
+            if on_hash:
+                on_hash(phase1_hashes)
+            if _hash_meets_target(h, target):
+                if on_log:
+                    on_log(f"Solution found in minimal set ({phase1_hashes} hash(es)).")
+                n_tx = 1 + len(tx_raws_for_block)
+                full_block = header + _varint(n_tx) + coinbase_for_block + b"".join(tx_raws_for_block)
+                result = submitblock(config, full_block.hex())
+                if result is None:
+                    return _supt_finish_round(round_id, round_t0, phase1_hashes, 1, nonce)
+                if on_log:
+                    on_log(f"Submit block rejected: {result}")
+                return _supt_finish_round(round_id, round_t0, phase1_hashes, 0, nonce)
+        if on_log:
+            on_log(f"Single-nonce mode: {phase1_hashes} hash(es), no solution.")
+        return _supt_finish_round(round_id, round_t0, phase1_hashes, 0)
 
     if on_log:
-        on_log("Phase 2+3: searching thesis candidates then linear sweep.")
+        on_log(
+            f"Thesis pipeline (MP): anchors {len(minimal_nonces)}; full candidate search per worker; "
+            f"optional linear sweep only if BTC_PHASE3_NONCES_PER_WORKER>0."
+        )
     num_workers = min(config.num_workers, 0x100)
     base_nonce = nonce_generate_unified_py(height, difficulty_bits)
     recovery_nonce = recovery_suggested_nonce(bits_bytes)
     if recovery_nonce is None:
         recovery_nonce = base_nonce
     phase2_candidates = build_candidate_list(
-        base_nonce, recovery_nonce, 0, 0xFFFFFFFF + 1
+        base_nonce, recovery_nonce, 0, 0xFFFFFFFF + 1, block_height=height
     )
     log_nonce_round(
         height, bits_hex, base_nonce, recovery_nonce,
@@ -904,6 +1027,8 @@ def _run_mining_loop_unified_mp(
         target,
         base_nonce,
         recovery_nonce,
+        round_id,
+        effective_phase3_count(config),
     )
 
     procs = []
@@ -932,6 +1057,10 @@ def _run_mining_loop_unified_mp(
             finished += 1
         except multiprocessing.queues.Empty:
             if stop_flag and stop_flag():
+                break
+            if _round_duration_exceeded(round_t0):
+                if on_log:
+                    on_log(f"Auto round restart ({get_auto_round_restart_sec()}s elapsed).")
                 break
             live_total = shared_hashes.value
             if on_hash and (phase1_hashes > 0 or live_total > 0):
@@ -966,7 +1095,13 @@ def _run_mining_loop_unified_mp(
     total_hashes += phase1_hashes
     if on_hash:
         on_hash(total_hashes)
-    return total_hashes, blocks_found
+    return _supt_finish_round(
+        round_id,
+        round_t0,
+        total_hashes,
+        blocks_found,
+        winning_nonce,
+    )
 
 
 # Report stats every N hashes or at least every 0.5s so UI shows nonce search / hashing quickly.
@@ -991,6 +1126,17 @@ def run_loop_forever(
     _last_reported_hashes = [0]
     _rpc_error_logged = [False]
 
+    supt_streams.set_active_search_mode(config.search_mode)
+    mode_tag = config.search_mode
+
+    def _prefixed_log(msg: str) -> None:
+        if not on_log:
+            return
+        if msg.startswith("["):
+            on_log(msg)
+        else:
+            on_log(f"[{mode_tag}] {msg}")
+
     def _on_hash(hashes_done_this_round: int) -> None:
         if not on_stats or hashes_done_this_round <= 0:
             return
@@ -1008,13 +1154,16 @@ def run_loop_forever(
         if elapsed > 0:
             on_stats(total, total_blocks, total / elapsed)
 
-    mining_loop = run_mining_loop_unified if config.use_unified else run_mining_loop
+    if config.search_mode == SEARCH_MODE_LINEAR:
+        mining_loop = run_mining_loop
+    else:
+        mining_loop = run_mining_loop_unified
     while stop_flag is None or not stop_flag():
         try:
             if on_log:
-                on_log("New round: fetching template and mining.")
+                _prefixed_log("New round: fetching template and mining.")
             hashes, blocks = mining_loop(
-                config, on_hash=_on_hash, stop_flag=stop_flag, on_log=on_log
+                config, on_hash=_on_hash, stop_flag=stop_flag, on_log=_prefixed_log if on_log else None
             )
             total_hashes += hashes
             total_blocks += blocks
@@ -1023,25 +1172,54 @@ def run_loop_forever(
                 on_stats(total_hashes, total_blocks, total_hashes / elapsed)
             if blocks > 0:
                 if on_log:
-                    on_log(f"Round complete: {hashes} hashes this round, block found! Continuing to mine.")
+                    _prefixed_log(f"Round complete: {hashes} hashes this round, block found! Continuing to mine.")
                 if on_block_found:
                     on_block_found()
                 _rpc_error_logged[0] = False
             if on_log:
-                on_log(f"Round complete: {hashes} hashes, no block; fetching next template.")
+                _prefixed_log(f"Round complete: {hashes} hashes, no block; fetching next template.")
         except BitcoinRPCError as e:
             if on_log:
                 if not _rpc_error_logged[0]:
                     _rpc_error_logged[0] = True
-                    on_log(f"RPC error: {e}. RPC URL: {config.rpc_url} — check host/port/network and auth. Retrying in 5s.")
+                    _prefixed_log(f"RPC error: {e}. RPC URL: {config.rpc_url} — check host/port/network and auth. Retrying in 5s.")
                 else:
-                    on_log(f"RPC error: {e}. Is Bitcoin Core running and RPC correct? Retrying in 5s.")
+                    _prefixed_log(f"RPC error: {e}. Is Bitcoin Core running and RPC correct? Retrying in 5s.")
             if config.verbose:
                 print(f"RPC error: {e}")
             time.sleep(5)
         except Exception as e:
             if on_log:
-                on_log(f"Non-RPC error: {e}. Retrying in 10s.")
+                _prefixed_log(f"Non-RPC error: {e}. Retrying in 10s.")
             if config.verbose:
                 print(f"Non-RPC error: {e}")
             time.sleep(10)
+
+
+def run_search_mode_benchmark(config: MinerConfig, rounds: int = 3) -> dict[str, Any]:
+    """Run N mining rounds in config.search_mode; return hashrate and round totals."""
+    supt_streams.set_active_search_mode(config.search_mode)
+    loop_fn = run_mining_loop if config.search_mode == SEARCH_MODE_LINEAR else run_mining_loop_unified
+    total_hashes = 0
+    total_blocks = 0
+    t0 = time.time()
+    errors: list[str] = []
+    n_rounds = max(1, min(10, int(rounds)))
+    for i in range(n_rounds):
+        try:
+            h, b = loop_fn(config)
+            total_hashes += h
+            total_blocks += b
+        except Exception as e:
+            errors.append(f"round {i + 1}: {e}")
+    elapsed = max(time.time() - t0, 1e-6)
+    return {
+        "ok": len(errors) == 0,
+        "search_mode": config.search_mode,
+        "rounds": n_rounds,
+        "total_hashes": total_hashes,
+        "total_blocks": total_blocks,
+        "hashrate": round(total_hashes / elapsed, 2),
+        "elapsed_sec": round(elapsed, 2),
+        "errors": errors or None,
+    }

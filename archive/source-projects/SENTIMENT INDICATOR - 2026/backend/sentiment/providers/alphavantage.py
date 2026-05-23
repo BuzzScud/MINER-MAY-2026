@@ -1,4 +1,5 @@
 """Alpha Vantage NEWS_SENTIMENT API: fetch by ticker, map to RawSignal. Use ticker_sentiment when present."""
+from __future__ import annotations
 import os
 from datetime import datetime, timezone
 from typing import Any

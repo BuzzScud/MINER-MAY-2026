@@ -1,4 +1,5 @@
 """Yahoo Finance news via yfinance: Ticker.get_news(count, tab). No API key. Rate limit: 2s min interval per docs."""
+from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 

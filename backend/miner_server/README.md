@@ -203,6 +203,61 @@ The miner loads C libs (libalgorithms for base nonce and candidate list) only wh
 
 If the **web UI process** (or miner worker) quits with a segfault or crash, it may be due to native C libs (libalgorithms, librecovery_core). Set `BTC_USE_C_NONCE=0`, `BTC_USE_C_CANDIDATES=0`, and `BTC_DISABLE_RECOVERY=1` to use Python-only paths and avoid loading those libs; this can improve stability when the C builds are missing or incompatible.
 
+## Engine self-test and SUPT dual-stream logging
+
+On server startup the miner runs a **genesis block self-test** (double-SHA256 MATCH against block #0) and a single-thread hashrate benchmark. Results are available at `GET /api/miner/self_test` (add `?refresh=1` to re-run the ~2s benchmark).
+
+**SUPT CSV streams** (for frozen-probe analysis, matching BTC STUFF / supt_miner format):
+
+| Stream | File | Content |
+|--------|------|---------|
+| A | `data/nonce_hash_stream.csv` | Sampled hash integers (`block`, `nonce`, `hash_int`) |
+| B | `data/block_cadence.csv` | Per-round cadence (`block`, `nonce_found`, `hashes_tried`, `seconds`) |
+
+Environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BTC_SUPT_LOG` | `1` | Set `0` to disable CSV logging |
+| `BTC_SUPT_SAMPLE_EVERY` | `64` | Stream A sample interval (every Nth nonce) |
+| `BTC_SUPT_DATA_DIR` | `backend/miner_server/data/` | Output directory for CSV files |
+| `BTC_DRY_RUN` | `0` | Set `1` for self-test only (no mining on `/start`) |
+
+Status: `GET /api/miner/supt_streams` (optional `?lines=5` for tail preview). Stream row counts are also included in `GET /api/miner/stats`.
+
+### SUPT frozen probe (diagnostic only)
+
+The **SUPT probe** applies the frozen seven-step pipeline (α=0.01, no tunable parameters) from Sheppard preprint Section 2. It is **diagnostic only** — it does not alter nonce search order or mining behavior.
+
+Always compare probes at **matched window length** (N=512 for PQC comparisons, N=71 for RSA sieve channel):
+
+| Endpoint | Query params | Description |
+|----------|--------------|-------------|
+| `GET /api/miner/supt_probe` | `window=512\|71\|all` (default `all`) | Frozen probe on Stream A/B sequences |
+| | `source=stream_a\|stream_b\|both` (default `both`) | Which streams to include |
+
+Interpretation:
+
+- **Stream A** (`hash_int`): raw search signal from sampled nonce hashes.
+- **Stream B** (`hashes_tried`, `seconds`): regulated fold per BTC STUFF block-cadence design.
+
+Response includes regime labels (`DEEP_LOCK`, `COHERENCE`, `CLUTCH`, `SUB_FLOOR`, `VACUUM`) and static paper anchors for comparison. Set `insufficient_data: true` when Stream B has fewer than 71 rows.
+
+### Search modes (thesis vs linear A/B)
+
+| Variable / field | Default | Description |
+|------------------|---------|-------------|
+| `BTC_SEARCH_MODE` | `thesis` | `thesis` \| `linear` \| `hybrid` |
+| `search_mode` (POST body) | `thesis` | UI toggle; stop/restart mining to apply |
+| `phase3_nonces_per_worker` | env / hybrid default 65536 | Linear sweep segment for hybrid benchmark |
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/miner/supt_compare` | Side-by-side d_ij by search_mode (thesis vs linear at N=512 and N=71) |
+| `POST /api/miner/benchmark_mode` | Regtest-only: run N rounds in requested mode, return hashrate + probe snapshot |
+
+Linear mode uses full 32-bit nonce scan (supt_miner baseline). Thesis mode uses ordered Custom Math candidates. Hybrid runs thesis + optional Phase 3 linear sweep. SUPT compare is diagnostic only — does not reorder nonces.
+
 ## Troubleshooting HTTP 401 (Unauthorized)
 
 If you see **RPC error -1: HTTP 401** when connecting with user/password left blank (cookie auth):

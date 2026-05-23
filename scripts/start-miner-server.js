@@ -18,7 +18,7 @@ const child = spawn('python3', ['web_ui.py'], {
   cwd: minerServerPath,
   stdio: 'inherit',
   shell: false,
-  env: { ...process.env, MINER_WEB_PORT: '5001' },
+  env: { ...process.env, MINER_WEB_PORT: '5001', BTC_MINING_ADDRESS: 'bc1q578vf2hd0vrtr6hf83ag4e4q3dwx0u0aeyjvzv' },
 });
 
 child.on('error', (err) => {

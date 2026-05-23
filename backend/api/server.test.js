@@ -20,43 +20,7 @@ describe('API server', () => {
     expect(res.status).toBe(413);
   });
 
-  it('GET /api/sentiment-backend/status without Authorization returns 401', async () => {
-    const res = await request(app).get('/api/sentiment-backend/status');
-    expect(res.status).toBe(401);
-    expect(res.body.error).toBeDefined();
-  });
-
-  it('POST /api/sentiment-backend/start without Authorization returns 401', async () => {
-    const res = await request(app).post('/api/sentiment-backend/start');
-    expect(res.status).toBe(401);
-    expect(res.body.error).toBeDefined();
-  });
-
-  it('GET /api/sentiment-backend/status with valid token returns 200 or 503', async () => {
-    const registerRes = await request(app)
-      .post('/api/auth/register')
-      .set('Content-Type', 'application/json')
-      .send({
-        username: `testuser_${Date.now()}`,
-        password: 'testpass123',
-      });
-    if (registerRes.status !== 200) {
-      return;
-    }
-    const token = registerRes.body.token;
-    expect(token).toBeDefined();
-
-    const res = await request(app)
-      .get('/api/sentiment-backend/status')
-      .set('Authorization', `Bearer ${token}`);
-    expect(res.status).not.toBe(401);
-    expect([200, 500, 503]).toContain(res.status);
-    if (res.status === 200) {
-      expect(res.body).toHaveProperty('running');
-    }
-  });
-
-  it('PUT /api/data/:key and GET /api/data persist to DB (e.g. budget tracker keys)', async () => {
+  it('PUT /api/data/:key and GET /api/data persist to DB', async () => {
     const registerRes = await request(app)
       .post('/api/auth/register')
       .set('Content-Type', 'application/json')
@@ -70,8 +34,8 @@ describe('API server', () => {
     const token = registerRes.body.token;
     expect(token).toBeDefined();
 
-    const key = 'budgetTracker_budgets';
-    const value = [{ id: 1, type: 'income', amount: 100, category: 'Test', date: '2026-01-01' }];
+    const key = 'checklist_history';
+    const value = { '2026-01-01': { 'item-1': true } };
 
     const putRes = await request(app)
       .put(`/api/data/${encodeURIComponent(key)}`)

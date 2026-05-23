@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """
-Backtest Python miner thesis nonce logic on the last 100 blocks.
-Compares actual winning nonce from chain to our base nonce, minimal list,
-and candidate list; reports Phase 1/Phase 2 hits and misses for learning.
-Requires Bitcoin Core RPC (getblockhash, getblock) reachable.
+Backtest Python miner thesis nonce logic on the last N blocks (default 100).
+
+Compares each block's actual nonce to the entropy-reduced minimal set and
+`build_candidate_list` (thesis ordering). Reports phase1 / phase2 hits and misses.
+
+Requires Bitcoin Core RPC (getblockhash, getblock). Run:
+  python3 backtest_last_100_blocks.py [num_blocks]
+  BTC_BACKTEST_BLOCKS=50 python3 backtest_last_100_blocks.py
 """
 import os
 import sys
@@ -108,6 +112,7 @@ def _run_backtest(
             recovery_nonce_val,
             0,
             0xFFFFFFFF + 1,
+            block_height=height,
         )
 
         dist = abs((actual_nonce - base_nonce) & NONCE_MASK)
@@ -177,9 +182,16 @@ def _run_backtest(
 
 def main() -> int:
     config = load_config_from_env()
-    print(f"Backtest last {BACKTEST_BLOCKS_DEFAULT} blocks (Bitcoin Core RPC)...")
+    raw_nb = os.environ.get("BTC_BACKTEST_BLOCKS", "").strip()
+    if len(sys.argv) >= 2 and sys.argv[1].strip().isdigit():
+        num_blocks = int(sys.argv[1].strip())
+    elif raw_nb.isdigit():
+        num_blocks = int(raw_nb)
+    else:
+        num_blocks = BACKTEST_BLOCKS_DEFAULT
+    print(f"Backtest last {num_blocks} blocks (Bitcoin Core RPC)...")
     try:
-        result = _run_backtest(config)
+        result = _run_backtest(config, num_blocks=num_blocks)
     except BitcoinRPCError as e:
         print(f"RPC error: {e}", file=sys.stderr)
         return 1

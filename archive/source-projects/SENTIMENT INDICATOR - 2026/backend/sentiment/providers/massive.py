@@ -1,4 +1,5 @@
 """Massive (Polygon) news API: fetch news by ticker, map to RawSignal. Use insights sentiment when present."""
+from __future__ import annotations
 import os
 from datetime import datetime, timezone
 from typing import Any

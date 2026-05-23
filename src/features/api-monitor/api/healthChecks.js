@@ -97,7 +97,7 @@ export const CHECK_ENDPOINTS = [
   {
     id: 'yahoo',
     name: 'Yahoo Finance',
-    description: 'Charts, Dashboard, Projection, Fib Stuff',
+    description: 'Charts, Dashboard, Fib Stuff',
     url: () => {
       if (import.meta.env.DEV) {
         return `${window.location.origin}/api/yahoo/v8/finance/chart/QQQ?interval=1d&range=1d`;
@@ -105,7 +105,7 @@ export const CHECK_ENDPOINTS = [
       return `https://corsproxy.io/?${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/QQQ?interval=1d&range=1d')}`;
     },
     method: 'GET',
-    usedBy: ['Charts', 'Dashboard', 'Projection', 'Fib Stuff'],
+    usedBy: ['Charts', 'Dashboard', 'Fib Stuff'],
   },
   {
     id: 'finnhub',
@@ -113,7 +113,7 @@ export const CHECK_ENDPOINTS = [
     description: 'Backup market data',
     url: () => `${typeof window !== 'undefined' ? window.location.origin : ''}/api/market-data/health-check?provider=finnhub&symbol=QQQ`,
     method: 'GET',
-    usedBy: ['Charts', 'Dashboard', 'Projection'],
+    usedBy: ['Charts', 'Dashboard'],
   },
   {
     id: 'massive',
@@ -121,7 +121,7 @@ export const CHECK_ENDPOINTS = [
     description: 'Backup market data',
     url: () => `${typeof window !== 'undefined' ? window.location.origin : ''}/api/market-data/health-check?provider=massive&symbol=QQQ`,
     method: 'GET',
-    usedBy: ['Charts', 'Dashboard', 'Projection'],
+    usedBy: ['Charts', 'Dashboard'],
   },
   {
     id: 'mempool-rest',

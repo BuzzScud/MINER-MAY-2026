@@ -21,11 +21,25 @@ import queue
 
 from flask import Flask, Blueprint, request, jsonify, send_from_directory, Response, stream_with_context
 
-from config import MinerConfig, default_num_workers, resolve_cookie_for_auth, get_bitcoin_datadir, get_cookie_candidate_paths
+from config import (
+    MinerConfig,
+    default_num_workers,
+    normalize_search_mode,
+    resolve_cookie_for_auth,
+    get_bitcoin_datadir,
+    get_cookie_candidate_paths,
+    dry_run_enabled,
+    SEARCH_MODE_LINEAR,
+    DEFAULT_AUTO_ROUND_RESTART_SEC,
+    DEFAULT_MINING_ADDRESS,
+)
 from btc_rpc import getblockchaininfo, getblocktemplate, getnetworkinfo, getmempoolinfo, getrawmempool, BitcoinRPCError
-from miner_loop import run_mining_loop, run_loop_forever
+from miner_loop import run_mining_loop, run_mining_loop_unified, run_loop_forever, run_search_mode_benchmark, set_auto_round_restart_sec
 from address import address_to_script_pubkey
 from backtest_last_100_blocks import _run_backtest
+from engine_self_test import run_self_test
+import supt_streams
+from supt_probe import run_probe_report, run_compare_report, run_z0_probe_report
 from thesis_mining import (
     get_base_nonce_source,
     get_last_seed_prime_path,
@@ -37,6 +51,22 @@ SATS_PER_BTC = 100_000_000
 
 app = Flask(__name__)
 miner_bp = Blueprint("miner", __name__)
+
+_last_self_test: dict = {"ok": False, "match": False, "loading": True}
+
+
+def _init_self_test() -> None:
+    global _last_self_test
+    try:
+        _last_self_test = run_self_test(benchmark_duration_sec=2.0)
+        _last_self_test["loading"] = False
+    except Exception as e:
+        _last_self_test = {
+            "ok": False,
+            "match": False,
+            "loading": False,
+            "error": str(e),
+        }
 
 
 @app.errorhandler(404)
@@ -52,7 +82,7 @@ def server_error(e):
 # Shared mining state
 _mining_thread = None
 _mining_stop = threading.Event()
-_mining_stats = {"hashes": 0, "blocks": 0, "hashrate": 0.0, "running": False, "error": None, "start_time": None, "last_elapsed_sec": None, "num_workers": 8, "use_unified": True}
+_mining_stats = {"hashes": 0, "blocks": 0, "hashrate": 0.0, "running": False, "error": None, "start_time": None, "last_elapsed_sec": None, "num_workers": 8, "use_unified": True, "search_mode": "thesis", "auto_round_restart_sec": 0}
 
 # Mining log: thread-safe deque, max 200 lines, each line "HH:MM:SS message"
 _mining_log = deque(maxlen=200)
@@ -200,12 +230,24 @@ def _config_from_request() -> MinerConfig:
     raw_host = (data.get("rpc_host") or request.args.get("rpc_host") or "127.0.0.1").strip()
     rpc_host = _sanitize_rpc_host(raw_host)
     mining_address = (data.get("mining_address") or request.args.get("mining_address") or "").strip()
+    if not mining_address:
+        mining_address = (os.environ.get("BTC_MINING_ADDRESS") or DEFAULT_MINING_ADDRESS).strip()
     if len(mining_address) > _MAX_MINING_ADDRESS_LEN:
         mining_address = mining_address[:_MAX_MINING_ADDRESS_LEN]
     raw_workers = data.get("num_workers") or request.args.get("num_workers") or os.environ.get("BTC_NUM_WORKERS", str(default_num_workers()))
     raw_val = max(1, int(raw_workers)) if str(raw_workers).strip().isdigit() else default_num_workers()
-    num_workers = min(8, max(1, raw_val))
+    num_workers = min(16, max(1, raw_val))
     use_unified = str(data.get("use_unified") or request.args.get("use_unified") or os.environ.get("BTC_USE_UNIFIED", "1")).strip().lower() in ("1", "true", "yes")
+    search_mode_raw = data.get("search_mode") or request.args.get("search_mode") or os.environ.get("BTC_SEARCH_MODE", "thesis")
+    search_mode = normalize_search_mode(str(search_mode_raw))
+    if search_mode != SEARCH_MODE_LINEAR:
+        use_unified = True
+    phase3_raw = data.get("phase3_nonces_per_worker") or request.args.get("phase3_nonces_per_worker")
+    phase3_override = None
+    if phase3_raw is not None and str(phase3_raw).strip().isdigit():
+        phase3_override = max(0, int(str(phase3_raw).strip()))
+    dry_run = str(data.get("dry_run") or request.args.get("dry_run") or "").strip().lower() in ("1", "true", "yes") or dry_run_enabled()
+    auto_round_restart_sec = _parse_auto_round_restart_sec(data)
     return MinerConfig(
         rpc_host=rpc_host,
         rpc_port=port,
@@ -215,9 +257,38 @@ def _config_from_request() -> MinerConfig:
         mining_address=mining_address,
         num_workers=num_workers,
         use_unified=use_unified,
+        search_mode=search_mode,
+        phase3_override=phase3_override,
         rpc_cookie_file=cookie_file,
         rpc_datadir=datadir,
+        dry_run=dry_run,
+        auto_round_restart_sec=auto_round_restart_sec,
     )
+
+
+def _parse_auto_round_restart_sec(data: dict) -> int:
+    """Parse auto round rollover interval (seconds). 0 = disabled."""
+    enabled_raw = data.get("auto_round_restart") or data.get("auto_round_restart_enabled")
+    if enabled_raw is not None:
+        enabled = str(enabled_raw).strip().lower() in ("1", "true", "yes", "on")
+        if not enabled:
+            return 0
+    sec_raw = data.get("auto_round_restart_sec")
+    if sec_raw is not None and str(sec_raw).strip().isdigit():
+        return max(0, int(str(sec_raw).strip()))
+    if enabled_raw is not None and str(enabled_raw).strip().lower() in ("1", "true", "yes", "on"):
+        return DEFAULT_AUTO_ROUND_RESTART_SEC
+    env_raw = os.environ.get("BTC_AUTO_ROUND_SEC", "").strip()
+    if env_raw.isdigit():
+        return max(0, int(env_raw))
+    return 0
+
+
+def _apply_auto_round_restart(sec: int) -> None:
+    global _mining_stats
+    sec = max(0, int(sec))
+    _mining_stats["auto_round_restart_sec"] = sec
+    set_auto_round_restart_sec(sec)
 
 
 def _cookie_diagnostics(config: MinerConfig) -> dict:
@@ -398,11 +469,103 @@ def api_stats():
         "last_elapsed_sec": round(_mining_stats["last_elapsed_sec"], 1) if _mining_stats.get("last_elapsed_sec") is not None else None,
         "num_workers": _mining_stats.get("num_workers", default_num_workers()),
         "use_unified": _mining_stats.get("use_unified", True),
+        "search_mode": _mining_stats.get("search_mode", "thesis"),
+        "auto_round_restart_sec": _mining_stats.get("auto_round_restart_sec", 0),
         "lifetime_hashes": lifetime_hashes,
         "lifetime_blocks": lifetime_blocks,
         "last_session_elapsed_sec": last_sess_elapsed,
         "last_session_hashes": last_sess_hashes,
         "activity_log_available": bool(_resolve_activity_log_path()),
+        **supt_streams.get_status(),
+    })
+
+
+@miner_bp.route("/self_test", methods=["GET"])
+def api_self_test():
+    """Genesis block engine self-test and single-thread benchmark."""
+    global _last_self_test
+    refresh = request.args.get("refresh", "").strip().lower() in ("1", "true", "yes")
+    if refresh:
+        _last_self_test = run_self_test(benchmark_duration_sec=2.0)
+        _last_self_test["loading"] = False
+    return jsonify({"ok": True, **_last_self_test})
+
+
+@miner_bp.route("/supt_streams", methods=["GET"])
+def api_supt_streams():
+    """SUPT dual-stream CSV status and optional tail preview."""
+    status = supt_streams.get_status()
+    lines = max(1, min(20, int(request.args.get("lines", "5") or "5")))
+    which = request.args.get("which", "both").strip().lower()
+    tail_a = supt_streams.tail_csv("a", lines) if which in ("a", "both") else []
+    tail_b = supt_streams.tail_csv("b", lines) if which in ("b", "both") else []
+    return jsonify({
+        "ok": True,
+        **status,
+        "tail_a": tail_a,
+        "tail_b": tail_b,
+    })
+
+
+@miner_bp.route("/supt_probe", methods=["GET"])
+def api_supt_probe():
+    """Frozen SUPT probe (alpha=0.01) on Stream A/B sequences at N=512 and N=71."""
+    window = request.args.get("window", "all").strip().lower()
+    source = request.args.get("source", "both").strip().lower()
+    if window not in ("512", "71", "all"):
+        window = "all"
+    if source not in ("stream_a", "stream_b", "both"):
+        source = "both"
+    report = run_probe_report(window_filter=window, source_filter=source)
+    return jsonify(report)
+
+
+@miner_bp.route("/supt_probe_z0", methods=["GET"])
+def api_supt_probe_z0():
+    """Frozen SUPT probe in raw and Z0-anchored frames (M.K.O.S. medium address)."""
+    window = request.args.get("window", "all").strip().lower()
+    source = request.args.get("source", "both").strip().lower()
+    if window not in ("512", "71", "all"):
+        window = "all"
+    if source not in ("stream_a", "stream_b", "both"):
+        source = "both"
+    report = run_z0_probe_report(window_filter=window, source_filter=source)
+    return jsonify(report)
+
+
+@miner_bp.route("/supt_compare", methods=["GET"])
+def api_supt_compare():
+    """Side-by-side SUPT probe results grouped by search_mode (thesis vs linear)."""
+    return jsonify(run_compare_report())
+
+
+@miner_bp.route("/benchmark_mode", methods=["POST"])
+def api_benchmark_mode():
+    """Regtest-only: run N rounds in requested search_mode and return hashrate + probe snapshot."""
+    try:
+        config = _config_from_request()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    if config.network != "regtest":
+        return jsonify({"ok": False, "error": "benchmark_mode is regtest-only"}), 403
+    if not config.mining_address:
+        return jsonify({"ok": False, "error": "Mining address required"}), 400
+    data = request.get_json(silent=True) or {}
+    rounds_raw = data.get("rounds") or request.args.get("rounds") or 3
+    try:
+        rounds = max(1, min(10, int(rounds_raw)))
+    except (TypeError, ValueError):
+        rounds = 3
+    search_mode = normalize_search_mode(data.get("search_mode") or config.search_mode)
+    config.search_mode = search_mode
+    config.use_unified = search_mode != SEARCH_MODE_LINEAR
+    result = run_search_mode_benchmark(config, rounds=rounds)
+    compare = run_compare_report()
+    mode_snapshot = compare.get(search_mode, {})
+    return jsonify({
+        **result,
+        "probe": mode_snapshot,
+        "compare": compare,
     })
 
 
@@ -413,7 +576,12 @@ def _mining_worker(config: MinerConfig) -> None:
     _mining_stats["start_time"] = time.time()
     _mining_stats["num_workers"] = config.num_workers
     _mining_stats["use_unified"] = config.use_unified
-    _mining_log_append(f"Worker started ({config.num_workers} workers, unified={config.use_unified}).")
+    _mining_stats["search_mode"] = config.search_mode
+    _apply_auto_round_restart(config.auto_round_restart_sec)
+    supt_streams.set_active_search_mode(config.search_mode)
+    _mining_log_append(f"Worker started ({config.num_workers} workers, mode={config.search_mode}, unified={config.use_unified}).")
+    if config.auto_round_restart_sec > 0:
+        _mining_log_append(f"Auto round restart every {config.auto_round_restart_sec}s (Stream B cadence).")
     _network_activity_append("Mining: worker started.")
     _last_stats_log = [0.0]
 
@@ -522,9 +690,20 @@ def api_start():
     """Start mining (background thread)."""
     global _mining_thread, _mining_stop
     if _mining_stats["running"]:
-        return jsonify({"ok": False, "error": "Mining already running"})
+        return jsonify({
+            "ok": True,
+            "already_running": True,
+            "message": "Mining already running",
+        })
     try:
         config = _config_from_request()
+        if config.dry_run:
+            return jsonify({
+                "ok": True,
+                "dry_run": True,
+                "message": "Dry-run mode — mining not started. Self-test only.",
+                "self_test": _last_self_test,
+            })
         if not config.mining_address:
             return jsonify({"ok": False, "error": "Mining address required"})
         address_to_script_pubkey(config.mining_address)
@@ -543,7 +722,10 @@ def api_start():
         _network_activity_append("Mining: start requested.")
         _mining_thread = threading.Thread(target=_mining_worker, args=(config,), daemon=True)
         _mining_thread.start()
-        return jsonify({"ok": True, "message": "Mining started"})
+        resp = {"ok": True, "message": "Mining started"}
+        if not _last_self_test.get("match", True):
+            resp["warning"] = "Genesis self-test failed — engine may be incorrect. Check GET /api/miner/self_test."
+        return jsonify(resp)
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 
@@ -553,6 +735,21 @@ def api_stop():
     """Stop mining."""
     _mining_stop.set()
     return jsonify({"ok": True, "message": "Stop requested"})
+
+
+@miner_bp.route("/auto_round_restart", methods=["POST"])
+def api_auto_round_restart():
+    """Enable/disable timed round rollover (Stream B cadence) while mining or idle."""
+    data = request.get_json(silent=True) or {}
+    sec = _parse_auto_round_restart_sec(data)
+    _apply_auto_round_restart(sec)
+    if sec > 0:
+        msg = f"Auto round restart enabled ({sec}s)."
+    else:
+        msg = "Auto round restart disabled."
+    _mining_log_append(msg)
+    _network_activity_append(f"Mining: {msg}")
+    return jsonify({"ok": True, "auto_round_restart_sec": sec, "message": msg})
 
 
 def _reset_mining_stats_and_logs() -> None:
@@ -736,9 +933,9 @@ def api_thesis_math_status():
         "thesis_alignment": "Miner uses thesis-aligned logic: deterministic nonce (seed prime + tetration), 12-fold sphere distribution, duality prime positions {1,5,7,11}, golden-ratio offsets, recovery when lib available. Partition over full 32-bit nonce space; thesis ch.15 unbiased search preserved.",
         "custom_math_used": "Python miner: hashlib SHA256, pure-Python thesis_mining (bits_compact_to_difficulty_bits, nonce_generate_unified_py, build_candidate_list, quadrant_from_nonce). Optional recovery via c. math lib when available.",
         "nonce_solutions_used": [
-            "Phase 1: minimal nonces (get_minimal_nonce_list: base + recovery, 1–2 hashes)",
-            "Phase 2: thesis candidates (build_candidate_list: sphere hopping, duality, golden-ratio; 4 workers = quadrant partition, 8 workers = chunk partition)",
-            "Phase 3: linear sweep (optional, per-worker disjoint range)",
+            "Single-nonce mode only: minimal set (get_minimal_nonce_list: base + recovery)",
+            "Default pipeline: ordered thesis candidates only — build_candidate_list (sphere hopping, duality, golden-ratio, crystalline layers, polar lattice with block height); 4 workers = quadrant partition, else chunk partition; timestamps roll to re-hash the same thesis order on new headers",
+            "Optional Phase 3: linear sweep only when BTC_PHASE3_NONCES_PER_WORKER>0 (default off; no linear fallback)",
         ],
         "base_nonce_source": get_base_nonce_source(),
         "recovery_loaded": is_recovery_loaded(),
@@ -897,6 +1094,7 @@ def api_backtest_regtest():
 
 
 app.register_blueprint(miner_bp, url_prefix="/api/miner")
+_init_self_test()
 
 
 @app.route("/")
@@ -958,7 +1156,7 @@ HTML_PAGE = """<!DOCTYPE html>
 
   <div class="card">
     <h2>Mining</h2>
-    <label>Mining address <input type="text" id="mining_address" value="bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4" placeholder="bc1q... or bcrt1q..."></label>
+    <label>Mining address <input type="text" id="mining_address" value="bc1q578vf2hd0vrtr6hf83ag4e4q3dwx0u0aeyjvzv" placeholder="bc1q... or bcrt1q..."></label>
     <button id="btn_start">Start mining</button>
     <button id="btn_stop">Stop mining</button>
     <div id="stats"></div>

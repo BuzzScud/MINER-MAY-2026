@@ -1,4 +1,5 @@
 """Fetchers for pre-computed indices, derivatives, funding, and news. Each returns (source, value, timestamp) or None."""
+from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from typing import Any

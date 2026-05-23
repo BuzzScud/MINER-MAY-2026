@@ -26,9 +26,19 @@ def main() -> int:
     from config import MinerConfig, resolve_cookie_for_auth, get_bitcoin_datadir
     from btc_rpc import getblockchaininfo, getblocktemplate, BitcoinRPCError
     from address import address_to_script_pubkey
+    from engine_self_test import run_self_test
 
     errors: list[str] = []
     cfg = MinerConfig(network=network, rpc_port=port)
+
+    # 0. Genesis engine self-test
+    print("0. Engine self-test (genesis block)...", end=" ")
+    st = run_self_test(benchmark_duration_sec=0.5)
+    if st.get("match"):
+        print(f"OK (MATCH, {st['benchmark']['hashrate_hs']:.0f} H/s)")
+    else:
+        errors.append("Genesis self-test MISMATCH")
+        print("FAIL (genesis hash mismatch)")
 
     # 1. Bitcoin Core RPC
     print(f"1. Bitcoin Core RPC ({network}, port {port})...", end=" ")

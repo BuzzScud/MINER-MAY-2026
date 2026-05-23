@@ -197,6 +197,111 @@ class TestRegtestE2E(unittest.TestCase):
         info_after = getblockchaininfo(config)
         self.assertEqual(info_after["blocks"], initial_height + 3)
 
+    def test_supt_streams_after_mining_round(self) -> None:
+        """With BTC_SUPT_LOG=1, one mining round produces Stream A and Stream B CSV rows."""
+        import csv
+        import importlib
+        import supt_streams as ss
+
+        supt_dir = tempfile.mkdtemp(prefix="btc_supt_e2e_")
+        os.environ["BTC_SUPT_LOG"] = "1"
+        os.environ["BTC_SUPT_DATA_DIR"] = supt_dir
+        os.environ["BTC_SUPT_SAMPLE_EVERY"] = "64"
+        importlib.reload(ss)
+
+        try:
+            from config import MinerConfig
+            from miner_loop import run_mining_loop_unified
+
+            address = _cli(self._datadir, "getnewaddress", "", "bech32")
+            cookie_path = os.path.join(self._datadir, "regtest", ".cookie")
+            config = MinerConfig(
+                rpc_host="127.0.0.1",
+                rpc_port=E2E_RPC_PORT,
+                network="regtest",
+                mining_address=address,
+                num_workers=1,
+                use_unified=True,
+                rpc_cookie_file=cookie_path,
+            )
+            run_mining_loop_unified(config)
+            path_a = os.path.join(supt_dir, "nonce_hash_stream.csv")
+            path_b = os.path.join(supt_dir, "block_cadence.csv")
+            self.assertTrue(os.path.isfile(path_a), "Stream A CSV should exist")
+            self.assertTrue(os.path.isfile(path_b), "Stream B CSV should exist")
+            with open(path_b, encoding="utf-8") as f:
+                rows_b = list(csv.reader(f))
+            self.assertGreaterEqual(len(rows_b), 2, "Stream B should have header + at least one row")
+
+            import importlib
+            import supt_probe as sp
+
+            importlib.reload(sp)
+            report = sp.run_probe_report()
+            self.assertTrue(report.get("ok"), report)
+            probes = report.get("probes", {})
+            for key in (
+                "stream_a_hash_int_512",
+                "stream_a_hash_int_71",
+                "stream_b_hashes_tried_512",
+                "stream_b_hashes_tried_71",
+            ):
+                self.assertIn(key, probes, f"missing probe key {key}")
+        finally:
+            ss.shutdown_writer()
+            os.environ.pop("BTC_SUPT_DATA_DIR", None)
+            shutil.rmtree(supt_dir, ignore_errors=True)
+
+    def test_search_mode_benchmark_compare(self) -> None:
+        """Thesis vs linear benchmark produces mode-tagged SUPT compare data."""
+        import importlib
+        import supt_streams as ss
+        from config import MinerConfig, SEARCH_MODE_LINEAR, SEARCH_MODE_THESIS
+        from miner_loop import run_search_mode_benchmark
+        from supt_probe import run_compare_report
+
+        supt_dir = tempfile.mkdtemp(prefix="btc_mode_e2e_")
+        os.environ["BTC_SUPT_LOG"] = "1"
+        os.environ["BTC_SUPT_DATA_DIR"] = supt_dir
+        os.environ["BTC_SUPT_SAMPLE_EVERY"] = "64"
+        os.environ["BTC_NUM_WORKERS"] = "1"
+        importlib.reload(ss)
+
+        try:
+            address = _cli(self._datadir, "getnewaddress", "", "bech32")
+            cookie_path = os.path.join(self._datadir, "regtest", ".cookie")
+            base = dict(
+                rpc_host="127.0.0.1",
+                rpc_port=E2E_RPC_PORT,
+                network="regtest",
+                mining_address=address,
+                num_workers=1,
+                use_unified=True,
+                rpc_cookie_file=cookie_path,
+            )
+            thesis_cfg = MinerConfig(**base, search_mode=SEARCH_MODE_THESIS)
+            linear_cfg = MinerConfig(**base, search_mode=SEARCH_MODE_LINEAR)
+            thesis_result = run_search_mode_benchmark(thesis_cfg, rounds=1)
+            self.assertTrue(thesis_result["ok"], thesis_result.get("errors"))
+            linear_result = run_search_mode_benchmark(linear_cfg, rounds=1)
+            self.assertTrue(linear_result["ok"], linear_result.get("errors"))
+            compare = run_compare_report()
+            self.assertTrue(compare.get("ok"))
+            self.assertGreaterEqual(compare["thesis"]["rounds"], 1)
+            self.assertGreaterEqual(compare["linear"]["rounds"], 1)
+            linear_samples = compare["linear"].get("stream_a_samples", 0)
+            thesis_samples = compare["thesis"].get("stream_a_samples", 0)
+            self.assertGreater(
+                linear_samples,
+                thesis_samples,
+                "linear mode should produce more Stream A samples per round than thesis",
+            )
+        finally:
+            ss.shutdown_writer()
+            os.environ.pop("BTC_SUPT_DATA_DIR", None)
+            os.environ.pop("BTC_NUM_WORKERS", None)
+            shutil.rmtree(supt_dir, ignore_errors=True)
+
     def test_segwit_coinbase_format(self) -> None:
         """Verify the segwit coinbase produces valid witness serialization."""
         from miner_loop import (

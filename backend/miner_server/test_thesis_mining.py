@@ -223,22 +223,22 @@ def test_nonce_c_python_parity() -> None:
 
 
 def test_thesis_then_phase3_structure() -> None:
-    """Verify miner_loop has thesis phases 1+2 then Phase 3 linear sweep (structural check)."""
+    """Verify miner_loop is thesis-first; Phase 3 linear sweep is optional (env), default off."""
     import inspect
     from miner_loop import run_mining_loop_unified, _mp_worker_mine_range
 
     source = inspect.getsource(run_mining_loop_unified)
     assert "for nonce in range(nonce_start, nonce_end)" not in source
     assert "candidates_set" not in source
-    assert "Phase 2" in source, "Phase 2 thesis candidates must be present"
-    assert "Phase 3" in source, "Phase 3 linear sweep must be present"
-    assert "phase3_nonces_per_worker" in source, "Phase 3 uses config phase3_nonces_per_worker"
+    assert "build_candidate_list" in source
+    assert "Phase 3" in source, "Phase 3 optional linear sweep must be present when enabled"
+    assert "effective_phase3_count" in source
 
     mp_source = inspect.getsource(_mp_worker_mine_range)
     assert "for n in nonce_range" not in mp_source
     assert "cands_set" not in mp_source
-    assert "Phase 3" in mp_source, "MP worker must include Phase 3"
-    assert "phase3_nonces_per_worker" in mp_source, "MP worker must use phase3_nonces_per_worker"
+    assert "phase3_count" in mp_source
+    assert "while current_time <= maxtime" in mp_source, "MP worker must re-run thesis candidates per timestamp"
 
 
 if __name__ == "__main__":

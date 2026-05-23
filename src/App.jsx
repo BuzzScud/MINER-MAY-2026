@@ -10,18 +10,11 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Trading from './pages/Trading';
-import Projection from './pages/Projection';
-import Settings from './pages/Settings';
-import EconomicCalendar from './pages/EconomicCalendar';
-import BudgetTracker from './pages/BudgetTracker';
 import Miner from './pages/Miner';
-import Accounts from './pages/Accounts';
+import Checklist from './pages/Checklist';
 import { ApiMonitorView } from './features/api-monitor/ApiMonitorView';
-import { SentimentView } from './features/sentiment/SentimentView';
-import AdminRoute from './components/common/AdminRoute';
-import AdminLayout from './layouts/AdminLayout';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminUsersActivity from './pages/admin/AdminUsersActivity';
+import { AppModalsProvider } from './contexts/AppModalsContext';
+import { SettingsModalOpener, AdminModalOpener } from './components/common/ModalRouteOpener';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,26 +34,14 @@ function App() {
     const path = window.location.pathname;
     const pathParts = path.split('/').filter(Boolean);
     
-    // Explicit check for /trading subdirectory - must be first segment
-    // This handles: /trading, /trading/, etc.
-    if (pathParts.length > 0 && pathParts[0] === 'trading') {
-      return '/trading';
-    }
+    // Auto-detect subdirectory: if first segment isn't a known app route,
+    // treat it as a deployment subdirectory (e.g. /trading/ on production).
+    const knownRoutes = ['trading', 'settings', 'dashboard', 'fib-stuff', 'miner', 'api-monitor', 'trading-bot', 'checklist', 'login', 'register', 'admin'];
     
-    // Also check the full path for exact matches
-    if (path.startsWith('/trading')) {
-      return '/trading';
-    }
-    
-    // Auto-detect subdirectory: if path has multiple segments and first isn't a known route
-    const knownRoutes = ['accounts', 'trading', 'projection', 'settings', 'calendar', 'dashboard', 'fib-stuff', 'budget-tracker', 'miner', 'api-monitor', 'trading-bot', 'sentiment', 'cme', 'checklist', 'login', 'register', 'admin'];
-    
-    // If first part is not a known route, it's likely a subdirectory
     if (pathParts.length > 0 && !knownRoutes.includes(pathParts[0]) && pathParts[0] !== 'index.html') {
       return `/${pathParts[0]}`;
     }
     
-    // Default to root
     return '/';
   };
 
@@ -73,34 +54,25 @@ function App() {
           <PublicSettingsProvider>
           <AuthProvider>
           <SettingsProvider>
+          <AppModalsProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="users" element={<AdminUsersActivity />} />
-              <Route path="activity" element={<Navigate to="/admin/users?tab=activity" replace />} />
-              <Route path="*" element={<Navigate to="/admin" replace />} />
-            </Route>
             <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
               <Route index element={<Dashboard />} />
               <Route path="dashboard" element={<Dashboard />} />
-              <Route path="accounts" element={<Accounts />} />
               <Route path="trading" element={<Trading />} />
-              <Route path="checklist" element={<Navigate to="/accounts?tab=checklist" replace />} />
-              <Route path="projection" element={<Projection />} />
-              <Route path="calendar" element={<EconomicCalendar />} />
+              <Route path="checklist" element={<Checklist />} />
               <Route path="fib-stuff" element={<Navigate to="/trading?tab=fib" replace />} />
-              <Route path="budget-tracker" element={<BudgetTracker />} />
               <Route path="miner" element={<Miner />} />
               <Route path="api-monitor" element={<ApiMonitorView />} />
               <Route path="trading-bot" element={<Navigate to="/trading?tab=bot" replace />} />
-              <Route path="sentiment" element={<ErrorBoundary><SentimentView /></ErrorBoundary>} />
-              <Route path="cme" element={<Navigate to="/sentiment?tab=cme" replace />} />
-              <Route path="settings" element={<Settings />} />
+              <Route path="settings" element={<SettingsModalOpener />} />
+              <Route path="admin/*" element={<AdminModalOpener />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>
+          </AppModalsProvider>
           </SettingsProvider>
           </AuthProvider>
           </PublicSettingsProvider>

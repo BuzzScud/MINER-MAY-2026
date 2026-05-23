@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
+import { useAppModals } from '../../contexts/AppModalsContext';
 import { useStorage } from '../../utils/storage';
 import { STORAGE_KEYS } from '../../utils/storageKeys';
 
@@ -30,6 +30,7 @@ function getInitialUserData(user) {
 
 function UserProfile({ user, onLogout }) {
   const { getItem, setItem } = useStorage();
+  const { openAdmin, adminOpen } = useAppModals();
   const [userData, setUserData] = useState(() => getInitialUserData(user));
 
   const [isEditing, setIsEditing] = useState(false);
@@ -334,18 +335,24 @@ function UserProfile({ user, onLogout }) {
         <div className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 overflow-hidden">
           <div className="p-2 flex items-center justify-center gap-6">
             {user?.is_admin && (
-              <Link
-                to="/admin"
-                className="flex flex-col items-center gap-1 min-w-0 shrink-0"
-                aria-label="Go to admin portal"
+              <button
+                type="button"
+                onClick={openAdmin}
+                className={`flex flex-col items-center gap-1 min-w-0 shrink-0 ${adminOpen ? 'opacity-100' : ''}`}
+                aria-label="Open admin portal"
+                aria-pressed={adminOpen}
               >
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+                <span className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
+                  adminOpen
+                    ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                    : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
+                }`}>
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                 </span>
                 <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 truncate max-w-full">Admin</span>
-              </Link>
+              </button>
             )}
             <button
               type="button"

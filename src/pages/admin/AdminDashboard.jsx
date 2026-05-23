@@ -35,7 +35,7 @@ function ConfirmModal({ open, title, onClose, onConfirm, confirmLabel, confirmDi
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60"
       aria-modal="true"
       role="dialog"
       aria-labelledby="confirm-modal-title"
@@ -79,7 +79,7 @@ function formatUptime(seconds) {
   return `${(seconds / 86400).toFixed(1)}d`;
 }
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ embedded = false }) {
   const { token } = useAuth();
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
@@ -110,9 +110,14 @@ export default function AdminDashboard() {
   const [dependencies, setDependencies] = useState([]);
   const [dependenciesLoading, setDependenciesLoading] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get('tab');
+  const [embeddedTab, setEmbeddedTab] = useState('overview');
+  const tabParam = embedded ? embeddedTab : searchParams.get('tab');
   const activeTab = DASHBOARD_TABS.some((t) => t.id === tabParam) ? tabParam : 'overview';
   const setTab = (id) => {
+    if (embedded) {
+      setEmbeddedTab(id);
+      return;
+    }
     setSearchParams(id === 'overview' ? {} : { tab: id });
   };
 
@@ -415,7 +420,7 @@ export default function AdminDashboard() {
     <>
       {showRestartOverlay && (
         <div
-          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gray-900 text-gray-100 p-4"
+          className="fixed inset-0 z-[10000] flex flex-col items-center justify-center bg-gray-900 text-gray-100 p-4"
           role="alert"
           aria-live="assertive"
           aria-label="Server reset in progress"
@@ -426,11 +431,13 @@ export default function AdminDashboard() {
           </p>
         </div>
       )}
-      <div className="w-full max-w-4xl mx-auto space-y-6">
+      <div className={`w-full mx-auto space-y-6 ${embedded ? '' : 'max-w-4xl'}`}>
+      {!embedded && (
       <div>
         <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">/admin</p>
         <h1 className="text-2xl font-bold text-gray-100">Overview</h1>
       </div>
+      )}
 
       <div className="flex flex-wrap gap-1 border-b border-white/10" role="tablist" aria-label="Dashboard sections">
         {DASHBOARD_TABS.map((tab) => (

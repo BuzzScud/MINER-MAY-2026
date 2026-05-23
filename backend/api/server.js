@@ -9,7 +9,6 @@ import authRoutes from './routes/auth.js';
 import dataRoutes from './routes/data.js';
 import adminRoutes from './routes/admin.js';
 import settingsRoutes from './routes/settings.js';
-import sentimentBackendRoutes from './routes/sentimentBackend.js';
 import predictRoutes from './routes/predict.js';
 import marketDataRoutes from './routes/marketData.js';
 
@@ -63,7 +62,7 @@ const apiRateLimiter = rateLimit({
   message: { error: 'Too many requests. Please try again later.' },
 });
 
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '256kb' }));
 app.use('/api', apiRateLimiter);
 app.use('/api/auth/login', authRateLimiter);
 app.use('/api/auth/register', authRateLimiter);
@@ -72,7 +71,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/data', dataRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
-app.use('/api/sentiment-backend', sentimentBackendRoutes);
 app.use('/api/predict', predictRoutes);
 app.use('/api/market-data', marketDataRoutes);
 

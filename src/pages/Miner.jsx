@@ -3,12 +3,16 @@ import { Link } from 'react-router-dom';
 import { useStorage } from '../utils/storage';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Panel } from '../components/common/Panel';
+import { Panel, PanelCollapseControls, PanelCollapseProvider } from '../components/common/Panel';
 import { MempoolView } from '../features/mempool/MempoolView';
 import '../features/mempool/mempool.css';
 
 const MINER_API = '/api/miner';
 const DEFAULT_PORTS = { mainnet: 8332, testnet: 18332, regtest: 18443, signet: 38332 };
+const AUTO_ROUND_5MIN_SEC = 300;
+const AUTO_ROUND_10MIN_SEC = 600;
+const DEFAULT_MINING_ADDRESS = 'bc1q578vf2hd0vrtr6hf83ag4e4q3dwx0u0aeyjvzv';
+const LEGACY_MINING_ADDRESS = 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,6 +54,54 @@ function Metric({ label, value, mono = false }) {
   );
 }
 
+const REGIME_BADGE_CLASS = {
+  DEEP_LOCK: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+  COHERENCE: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+  CLUTCH: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+  SUB_FLOOR: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+  VACUUM: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+};
+
+function RegimeBadge({ regime }) {
+  if (!regime) return null;
+  const label = regime.replace(/_/g, '-');
+  const cls = REGIME_BADGE_CLASS[regime] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+  return (
+    <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
+function CompareCell({ probe }) {
+  if (!probe?.ok) return <span className="text-gray-400">—</span>;
+  return (
+    <span className="font-mono text-gray-900 dark:text-white">
+      {probe.d_ij} <RegimeBadge regime={probe.regime} />
+    </span>
+  );
+}
+
+function ProbeRow({ label, probe }) {
+  if (!probe?.ok) {
+    return (
+      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+        <span>{label}</span>
+        <span>{probe?.error ?? '—'}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center justify-between text-xs">
+      <span className="text-gray-600 dark:text-gray-300">{label}</span>
+      <span className="flex items-center gap-2 font-mono">
+        <span className="text-gray-900 dark:text-white">d_ij = {probe.d_ij}</span>
+        <RegimeBadge regime={probe.regime} />
+      </span>
+    </div>
+  );
+}
+
 export default function Miner() {
   const { getItem, setItem } = useStorage();
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -62,10 +114,11 @@ export default function Miner() {
     rpc_user: '',
     rpc_password: '',
     network: 'mainnet',
-    mining_address: 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4',
+    mining_address: DEFAULT_MINING_ADDRESS,
     cookie_file: '',
     datadir: '',
     num_workers: 8,
+    search_mode: 'thesis',
   });
 
   const [connectionStatus, setConnectionStatus] = useState({ state: 'idle', message: 'Not checked — open settings to connect.', connected: false });
@@ -89,6 +142,15 @@ export default function Miner() {
   const [backtestStatus, setBacktestStatus] = useState('');
   const [pollingEnabled, setPollingEnabled] = useState(false);
 
+  const [selfTest, setSelfTest] = useState(null);
+  const [selfTestRefreshing, setSelfTestRefreshing] = useState(false);
+  const [suptStreams, setSuptStreams] = useState(null);
+  const [suptProbe, setSuptProbe] = useState(null);
+  const [suptProbeZ0, setSuptProbeZ0] = useState(null);
+  const [suptCompare, setSuptCompare] = useState(null);
+  const [dryRun, setDryRun] = useState(false);
+  const [autoRoundRestartSec, setAutoRoundRestartSec] = useState(0);
+
   const getConfigForApi = useCallback(() => {
     const port = config.rpc_port || DEFAULT_PORTS[config.network] || 8332;
     return {
@@ -100,13 +162,27 @@ export default function Miner() {
       mining_address: config.mining_address,
       cookie_file: config.cookie_file || undefined,
       datadir: config.datadir || undefined,
-      num_workers: Math.max(1, Math.min(8, config.num_workers || 8)),
-      use_unified: true,
+      num_workers: Math.max(1, Math.min(16, config.num_workers || 8)),
+      use_unified: config.search_mode !== 'linear',
+      search_mode: config.search_mode || 'thesis',
+      auto_round_restart: autoRoundRestartSec > 0,
+      auto_round_restart_sec: autoRoundRestartSec,
     };
-  }, [config]);
+  }, [config, autoRoundRestartSec]);
 
   const MINER_SERVER_UNREACHABLE = 'Request failed';
   const minerServerDownMessage = 'Miner server not running. Start it with: npm run miner:server';
+
+  const refreshMiningStats = useCallback(() => {
+    api('/stats').then((s) => {
+      if (s.hashrate !== undefined) {
+        setStats(s);
+        if (s.auto_round_restart_sec !== undefined) {
+          setAutoRoundRestartSec(Number(s.auto_round_restart_sec) || 0);
+        }
+      }
+    });
+  }, []);
 
   const checkConnection = useCallback(async () => {
     setCheckingConnection(true);
@@ -117,6 +193,7 @@ export default function Miner() {
     if (r.ok && r.connected) {
       setConnectionStatus({ state: 'connected', message: `Connected: ${r.chain}, blocks ${r.blocks}`, connected: true });
       setConnectionHint('');
+      setPollingEnabled(true);
     } else {
       const isServerDown = r.error === MINER_SERVER_UNREACHABLE;
       setConnectionStatus({
@@ -161,11 +238,42 @@ export default function Miner() {
 
   useEffect(() => {
     getItem(STORAGE_KEYS.BTC_MINER_ADDRESS).then((addr) => {
-      if (addr && typeof addr === 'string' && addr.trim()) {
-        setConfig((prev) => ({ ...prev, mining_address: addr.trim() }));
+      const trimmed = typeof addr === 'string' ? addr.trim() : '';
+      const nextAddress =
+        trimmed && trimmed !== LEGACY_MINING_ADDRESS ? trimmed : DEFAULT_MINING_ADDRESS;
+      setConfig((prev) => ({ ...prev, mining_address: nextAddress }));
+      if (nextAddress !== trimmed) {
+        setItem(STORAGE_KEYS.BTC_MINER_ADDRESS, nextAddress).catch(() => {});
+      }
+    });
+    getItem(STORAGE_KEYS.BTC_MINER_SEARCH_MODE).then((mode) => {
+      if (mode === 'thesis' || mode === 'linear' || mode === 'hybrid') {
+        setConfig((prev) => ({ ...prev, search_mode: mode }));
+      }
+    });
+    getItem(STORAGE_KEYS.BTC_MINER_AUTO_ROUND).then((val) => {
+      if (val === '1' || val === true) {
+        setAutoRoundRestartSec(AUTO_ROUND_10MIN_SEC);
+        return;
+      }
+      const sec = parseInt(String(val), 10);
+      if (sec === AUTO_ROUND_5MIN_SEC || sec === AUTO_ROUND_10MIN_SEC) {
+        setAutoRoundRestartSec(sec);
       }
     });
   }, [getItem]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api('/stats').then((s) => {
+      if (cancelled || s.hashrate === undefined) return;
+      setStats(s);
+      if (s.running) setPollingEnabled(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     getItem(STORAGE_KEYS.BTC_MINER_CONNECTION).then((saved) => {
@@ -192,17 +300,54 @@ export default function Miner() {
         .map(([k, v]) => [k, String(v)]),
     );
     const fetchAll = () => {
-      api('/stats').then(setStats);
+      api('/stats').then((r) => r.hashrate !== undefined && setStats(r));
       if (connectionStatus.connected || params.network) {
         api('/metrics', params).then((m) => m.ok && setMetrics(m));
       }
       api('/log').then((r) => r.lines && setLogLines(r.lines));
       api('/activity').then((r) => r.entries && setActivityEntries(r.entries));
+      api('/supt_streams?lines=5').then((r) => r.ok && setSuptStreams(r));
     };
     fetchAll();
     const t = setInterval(fetchAll, 1000);
     return () => clearInterval(t);
   }, [getConfigForApi, connectionStatus.connected, pollingEnabled]);
+
+  useEffect(() => {
+    api('/supt_probe').then((r) => r.ok && setSuptProbe(r)).catch(() => {});
+    api('/supt_probe_z0').then((r) => r.ok && setSuptProbeZ0(r)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!stats?.running) return;
+    const fetchProbe = () => {
+      api('/supt_probe').then((r) => r.ok && setSuptProbe(r));
+      api('/supt_probe_z0').then((r) => r.ok && setSuptProbeZ0(r));
+    };
+    fetchProbe();
+    const t = setInterval(fetchProbe, 5000);
+    return () => clearInterval(t);
+  }, [stats?.running]);
+
+  useEffect(() => {
+    api('/supt_compare').then((r) => r.ok && setSuptCompare(r)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!pollingEnabled) return;
+    const fetchCompare = () => {
+      api('/supt_compare').then((r) => r.ok && setSuptCompare(r));
+    };
+    fetchCompare();
+    const t = setInterval(fetchCompare, 10000);
+    return () => clearInterval(t);
+  }, [pollingEnabled]);
+
+  useEffect(() => {
+    api('/self_test').then((r) => {
+      if (r.ok !== false) setSelfTest(r);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     api('/thesis_math_status').then((r) => r.python_miner && setThesisInfo(r));
@@ -222,9 +367,20 @@ export default function Miner() {
 
   const handleStart = async () => {
     setMiningError('');
-    const r = await post('/start', getConfigForApi());
-    if (r.ok) {
+    const r = await post('/start', { ...getConfigForApi(), dry_run: dryRun });
+    const alreadyRunning =
+      r.already_running === true ||
+      (typeof r.error === 'string' && r.error.toLowerCase().includes('already running'));
+    if (r.ok || alreadyRunning) {
       setMiningError('');
+      if (r.dry_run) {
+        setMiningError('');
+        if (r.self_test) setSelfTest(r.self_test);
+        return;
+      }
+      if (r.warning) setMiningError(r.warning);
+      setPollingEnabled(true);
+      refreshMiningStats();
     } else {
       let msg = r.error || 'Failed to start';
       if (msg.toLowerCase().includes('bech32') || msg.toLowerCase().includes('checksum')) {
@@ -246,10 +402,28 @@ export default function Miner() {
     setRestarting(false);
     if (r.ok) {
       setMiningError('');
+      setPollingEnabled(true);
       setStats({ hashes: 0, blocks: 0, hashrate: 0, elapsed_sec: null });
+      refreshMiningStats();
     } else {
       setMiningError(r.error || 'Restart failed');
     }
+  };
+
+  const handleAutoRoundToggle = async (intervalSec, enabled) => {
+    const nextSec = enabled ? intervalSec : 0;
+    setAutoRoundRestartSec(nextSec);
+    setItem(STORAGE_KEYS.BTC_MINER_AUTO_ROUND, String(nextSec)).catch(() => {});
+    const r = await post('/auto_round_restart', {
+      auto_round_restart: nextSec > 0,
+      auto_round_restart_sec: nextSec,
+    });
+    if (!r.ok) {
+      setMiningError(r.error || 'Failed to update auto-round setting');
+      return;
+    }
+    setMiningError('');
+    refreshMiningStats();
   };
 
   const handleBacktest = async () => {
@@ -268,9 +442,17 @@ export default function Miner() {
     setItem(STORAGE_KEYS.BTC_MINER_ADDRESS, config.mining_address).catch(() => {}).finally(() => setWalletModalOpen(false));
   };
 
+  const refreshSelfTest = async () => {
+    setSelfTestRefreshing(true);
+    const r = await api('/self_test?refresh=1');
+    setSelfTestRefreshing(false);
+    if (r.ok !== false) setSelfTest(r);
+  };
+
   const summaryText = `Network: ${config.network} · ${config.rpc_host}:${config.rpc_port || DEFAULT_PORTS[config.network]}`;
 
   return (
+    <PanelCollapseProvider>
     <div className="w-full max-w-[1400px] mx-auto px-4">
       <nav className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-4">
         <Link to="/" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
@@ -280,19 +462,22 @@ export default function Miner() {
         <span className="font-medium text-gray-900 dark:text-white">Miner</span>
       </nav>
 
-      <header className="mb-4 flex items-center justify-between">
+      <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">BTC Miner</h1>
           <p className="text-xs text-gray-500 dark:text-gray-400">Connect to Bitcoin Core. Use Detect Bitcoin Core to find and connect automatically.</p>
         </div>
-        <div
-          className="flex items-center gap-2 rounded-full px-3 py-1 text-xs text-gray-700 dark:text-gray-300"
-          title={connectionStatus.connected ? 'RPC connected' : 'RPC not connected'}
-        >
-          <span
-            className={`h-2 w-2 rounded-full ${connectionStatus.connected ? 'bg-green-500' : checkingConnection ? 'animate-pulse bg-amber-500' : 'bg-red-500'}`}
-          />
-          {checkingConnection ? 'Checking…' : connectionStatus.connected ? 'Connected' : 'Disconnected'}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <PanelCollapseControls />
+          <div
+            className="flex items-center gap-2 rounded-full px-3 py-1 text-xs text-gray-700 dark:text-gray-300"
+            title={connectionStatus.connected ? 'RPC connected' : 'RPC not connected'}
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${connectionStatus.connected ? 'bg-green-500' : checkingConnection ? 'animate-pulse bg-amber-500' : 'bg-red-500'}`}
+            />
+            {checkingConnection ? 'Checking…' : connectionStatus.connected ? 'Connected' : 'Disconnected'}
+          </div>
         </div>
       </header>
 
@@ -377,7 +562,7 @@ export default function Miner() {
                     style={{ backgroundImage: "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e\")" }}
                     aria-label="Number of workers"
                   >
-                    {[1, 4, 8].map((n) => (
+                    {[1, 4, 8, 12, 16].map((n) => (
                       <option key={n} value={n}>{n} workers</option>
                     ))}
                   </select>
@@ -393,6 +578,30 @@ export default function Miner() {
                   <button type="button" onClick={handleRestart} disabled={restarting} className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50" title="Reset stats to 0 and restart mining">
                     {restarting ? 'Restarting…' : 'Restart'}
                   </button>
+                  <label
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 px-2.5 py-1.5 text-xs text-gray-700 dark:text-gray-300 cursor-pointer"
+                    title="End each mining round after 5 minutes and start a new one (logs Stream B cadence rows; keeps session stats)"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={autoRoundRestartSec === AUTO_ROUND_5MIN_SEC}
+                      onChange={(e) => handleAutoRoundToggle(AUTO_ROUND_5MIN_SEC, e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    5m auto-round
+                  </label>
+                  <label
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 px-2.5 py-1.5 text-xs text-gray-700 dark:text-gray-300 cursor-pointer"
+                    title="End each mining round after 10 minutes and start a new one (logs Stream B cadence rows; keeps session stats)"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={autoRoundRestartSec === AUTO_ROUND_10MIN_SEC}
+                      onChange={(e) => handleAutoRoundToggle(AUTO_ROUND_10MIN_SEC, e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    10m auto-round
+                  </label>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Metric label="Hashrate" value={stats?.hashrate != null ? `${stats.hashrate} H/s` : null} mono />
@@ -401,6 +610,99 @@ export default function Miner() {
                   <Metric label="Elapsed" value={stats?.elapsed_sec != null ? `${stats.elapsed_sec}s` : null} mono />
                 </div>
                 {miningError && <p className="text-xs text-red-400 mt-2">{miningError}</p>}
+              </Panel>
+
+              <Panel title="Search Mode">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  Thesis = ordered candidates (Custom Math). Linear = supt_miner baseline (nonce++). Hybrid = thesis + linear sweep (benchmark).
+                </p>
+                <div className="flex flex-wrap gap-3 mb-2">
+                  {['thesis', 'linear', 'hybrid'].map((mode) => (
+                    <label key={mode} className="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300 cursor-pointer capitalize">
+                      <input
+                        type="radio"
+                        name="search_mode"
+                        value={mode}
+                        checked={config.search_mode === mode}
+                        onChange={() => {
+                          setConfig((c) => ({ ...c, search_mode: mode }));
+                          setItem(STORAGE_KEYS.BTC_MINER_SEARCH_MODE, mode).catch(() => {});
+                        }}
+                        className="border-gray-300"
+                      />
+                      {mode}
+                    </label>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Active</span>
+                  <span className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+                    {stats?.search_mode ?? config.search_mode}
+                  </span>
+                </div>
+                {stats?.running && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mb-2">Stop and restart mining to apply search mode.</p>
+                )}
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">SUPT A/B (N=512 / N=71)</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[10px]">
+                    <thead>
+                      <tr className="text-left text-gray-500 dark:text-gray-400">
+                        <th className="py-1 pr-2">Mode</th>
+                        <th className="py-1 pr-2">Rounds</th>
+                        <th className="py-1 pr-2">A N=512</th>
+                        <th className="py-1 pr-2">A N=71</th>
+                        <th className="py-1">B N=71</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {['thesis', 'linear'].map((mode) => {
+                        const row = suptCompare?.[mode];
+                        return (
+                          <tr key={mode} className="border-t border-gray-200 dark:border-gray-700">
+                            <td className="py-1 pr-2 capitalize font-semibold">{mode}</td>
+                            <td className="py-1 pr-2 font-mono">{row?.rounds ?? '—'}</td>
+                            <td className="py-1 pr-2"><CompareCell probe={row?.stream_a_512} /></td>
+                            <td className="py-1 pr-2"><CompareCell probe={row?.stream_a_71} /></td>
+                            <td className="py-1"><CompareCell probe={row?.stream_b_seconds_71} /></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {suptCompare?.note && (
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-2">{suptCompare.note}</p>
+                )}
+              </Panel>
+
+              <Panel title="Engine Self-Test">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Genesis block PoW validation (double-SHA256, 80-byte header).</p>
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className={`inline-block w-2 h-2 rounded-full ${selfTest?.match ? 'bg-green-500' : selfTest?.loading ? 'bg-amber-500 animate-pulse' : 'bg-red-500'}`}
+                    aria-hidden
+                  />
+                  <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                    {selfTest?.loading ? 'Running…' : selfTest?.match ? 'MATCH' : 'MISMATCH'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <Metric label="Single-thread" value={selfTest?.benchmark?.hashrate_hs != null ? `${Number(selfTest.benchmark.hashrate_hs).toLocaleString()} H/s` : null} mono />
+                  <Metric label="Target diff" value={selfTest?.benchmark?.target_diff != null ? String(selfTest.benchmark.target_diff) : '1.0'} mono />
+                </div>
+                {selfTest?.genesis?.genesis_hash && (
+                  <p className="font-mono text-[10px] text-gray-500 dark:text-gray-400 break-all mb-2">{selfTest.genesis.genesis_hash}</p>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={refreshSelfTest} disabled={selfTestRefreshing} className="rounded-lg bg-gray-200 dark:bg-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-800 dark:text-gray-200 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-500 disabled:opacity-50">
+                    {selfTestRefreshing ? 'Benchmarking…' : 'Re-run benchmark'}
+                  </button>
+                  <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 cursor-pointer">
+                    <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} className="rounded border-gray-300" />
+                    Dry-run (no mining)
+                  </label>
+                </div>
               </Panel>
 
               <Panel title="Thesis & Custom Math">
@@ -435,6 +737,94 @@ export default function Miner() {
                 >
                   {logLines.length ? logLines.join('\n') : '—'}
                 </pre>
+              </Panel>
+
+              <Panel title="SUPT Streams">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  Stream A: raw hash search · Stream B: block cadence fold (sample every {suptStreams?.sample_every ?? 64}).
+                </p>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <Metric label="Stream A rows" value={suptStreams?.stream_a_rows} mono />
+                  <Metric label="Stream B rows" value={suptStreams?.stream_b_rows} mono />
+                </div>
+                <p className="text-[10px] font-mono text-gray-500 dark:text-gray-400 break-all mb-1">A: {suptStreams?.stream_a_path ?? '—'}</p>
+                <p className="text-[10px] font-mono text-gray-500 dark:text-gray-400 break-all mb-2">B: {suptStreams?.stream_b_path ?? '—'}</p>
+                <div className="text-[10px] font-mono text-gray-600 dark:text-gray-300 space-y-1 max-h-24 overflow-y-auto">
+                  {(suptStreams?.tail_a ?? []).slice(-3).map((row, i) => (
+                    <div key={`a-${i}`}>A {row.join(', ')}</div>
+                  ))}
+                  {(suptStreams?.tail_b ?? []).slice(-3).map((row, i) => (
+                    <div key={`b-${i}`}>B {row.join(', ')}</div>
+                  ))}
+                  {!suptStreams?.tail_a?.length && !suptStreams?.tail_b?.length && <div>—</div>}
+                </div>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-2">Disable with BTC_SUPT_LOG=0 (server restart).</p>
+              </Panel>
+
+              <Panel title="SUPT Probe (frozen α=0.01)">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  Diagnostic frozen pipeline — does not alter nonce search. Compare at matched N (512 or 71).
+                </p>
+                {suptProbe?.insufficient_data && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mb-2">
+                    Insufficient data — Stream B needs at least 71 rows for reliable N=71 probes.
+                  </p>
+                )}
+                <div className="space-y-2 mb-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Stream A (raw search)</p>
+                  <ProbeRow label="N=512" probe={suptProbe?.probes?.stream_a_hash_int_512} />
+                  <ProbeRow label="N=71" probe={suptProbe?.probes?.stream_a_hash_int_71} />
+                </div>
+                <div className="space-y-2 mb-3 border-t border-gray-200 dark:border-gray-700 pt-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Stream B (block cadence / fold)</p>
+                  <ProbeRow label="N=512 seconds" probe={suptProbe?.probes?.stream_b_seconds_512} />
+                  <ProbeRow label="N=71 seconds" probe={suptProbe?.probes?.stream_b_seconds_71} />
+                  <ProbeRow label="N=512 hashes_tried" probe={suptProbe?.probes?.stream_b_hashes_tried_512} />
+                  <ProbeRow label="N=71 hashes_tried" probe={suptProbe?.probes?.stream_b_hashes_tried_71} />
+                </div>
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
+                    Paper anchors (Consensus Mechanism Geometry)
+                  </p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-gray-600 dark:text-gray-300">
+                    {Object.entries(suptProbe?.anchors ?? {}).map(([key, a]) => (
+                      <span key={key} className="font-mono">
+                        {a.label ?? key}: {a.d_ij} <RegimeBadge regime={a.regime} />
+                      </span>
+                    ))}
+                    {!suptProbe?.anchors && <span>—</span>}
+                  </div>
+                </div>
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
+                    Z₀ frame ({suptProbeZ0?.z0_ohm ?? '376.7303'} Ω)
+                  </p>
+                  {suptProbeZ0?.interpretation && (
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-2">{suptProbeZ0.interpretation}</p>
+                  )}
+                  <div className="space-y-2 mb-2">
+                    <p className="text-[10px] font-semibold text-gray-600 dark:text-gray-300">Stream A — raw vs Z₀</p>
+                    <ProbeRow label="N=512 raw" probe={suptProbeZ0?.probes?.raw?.stream_a_hash_int_512} />
+                    <ProbeRow label="N=512 Z₀" probe={suptProbeZ0?.probes?.z0_anchored?.stream_a_hash_int_512} />
+                    <ProbeRow label="N=71 raw" probe={suptProbeZ0?.probes?.raw?.stream_a_hash_int_71} />
+                    <ProbeRow label="N=71 Z₀" probe={suptProbeZ0?.probes?.z0_anchored?.stream_a_hash_int_71} />
+                  </div>
+                  <div className="space-y-2 mb-2 border-t border-gray-200 dark:border-gray-700 pt-2">
+                    <p className="text-[10px] font-semibold text-gray-600 dark:text-gray-300">Stream B cadence — raw vs Z₀</p>
+                    <ProbeRow label="N=71 sec raw" probe={suptProbeZ0?.probes?.raw?.stream_b_seconds_71} />
+                    <ProbeRow label="N=71 sec Z₀" probe={suptProbeZ0?.probes?.z0_anchored?.stream_b_seconds_71} />
+                    <ProbeRow label="N=71 hashes raw" probe={suptProbeZ0?.probes?.raw?.stream_b_hashes_tried_71} />
+                    <ProbeRow label="N=71 hashes Z₀" probe={suptProbeZ0?.probes?.z0_anchored?.stream_b_hashes_tried_71} />
+                  </div>
+                  <div className="space-y-2 border-t border-gray-200 dark:border-gray-700 pt-2">
+                    <p className="text-[10px] font-semibold text-gray-600 dark:text-gray-300">Reference lattice (Z₀ frame)</p>
+                    <ProbeRow label="Z₀·φⁿ" probe={suptProbeZ0?.reference_lattice?.z0_phi_powers} />
+                    <ProbeRow label="Z₀·Fib ratios" probe={suptProbeZ0?.reference_lattice?.z0_fib_ratios} />
+                  </div>
+                </div>
+                {!stats?.running && (
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-2">Start mining to refresh probe every 5s.</p>
+                )}
               </Panel>
 
               <Panel title="Network Activity">
@@ -559,5 +949,6 @@ export default function Miner() {
         </div>
       )}
     </div>
+    </PanelCollapseProvider>
   );
 }

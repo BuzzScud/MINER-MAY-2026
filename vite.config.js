@@ -40,11 +40,8 @@ export default defineConfig(({ command }) => ({
       'Permissions-Policy': 'geolocation=(), camera=(), microphone=()',
     },
     proxy: {
-      '/api/sentiment-backend': { target: 'http://localhost:4000', changeOrigin: true },
       '/api/predict': { target: 'http://localhost:4000', changeOrigin: true },
       '/api/market-data': { target: 'http://localhost:4000', changeOrigin: true },
-      '/api/sentiment': { target: 'http://localhost:8000', changeOrigin: true },
-      '/api/composite': { target: 'http://localhost:8000', changeOrigin: true },
       '/api/yahoo': {
         target: 'https://query1.finance.yahoo.com',
         changeOrigin: true,

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Presentation, LineChart, BadgeDollarSign, Twitter, Youtube, ExternalLink } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { useSettings } from '../contexts/SettingsContext';
 import { useStorage } from '../utils/storage';
@@ -884,6 +885,44 @@ function StockInfoCard({ symbol, data, loading, onRemove }) {
   );
 }
 
+const DASHBOARD_QUICK_LINKS = [
+  {
+    id: 'google-slides',
+    label: 'Google Slides',
+    href: 'https://docs.google.com/presentation/u/0/',
+    Icon: Presentation,
+    iconBg: 'bg-amber-500',
+  },
+  {
+    id: 'topstep',
+    label: 'TopStep',
+    href: 'https://dashboard.topstep.com/dashboard/accounts',
+    Icon: LineChart,
+    iconBg: 'bg-sky-600',
+  },
+  {
+    id: 'ftmo',
+    label: 'FTMO',
+    href: 'https://trader.ftmo.oanda.com/accounts-overview',
+    Icon: BadgeDollarSign,
+    iconBg: 'bg-emerald-600',
+  },
+  {
+    id: 'x',
+    label: 'X',
+    href: 'https://x.com/home',
+    Icon: Twitter,
+    iconBg: 'bg-gray-900 dark:bg-gray-100',
+  },
+  {
+    id: 'youtube',
+    label: 'YouTube',
+    href: 'https://www.youtube.com',
+    Icon: Youtube,
+    iconBg: 'bg-red-600',
+  },
+];
+
 function Dashboard() {
   // Default symbols with their display names and API symbols
   const defaultSymbols = [
@@ -902,7 +941,7 @@ function Dashboard() {
   ];
 
   // Default section order
-  const defaultSectionOrder = ['world-clocks', 'market'];
+  const defaultSectionOrder = ['quick-links', 'world-clocks', 'market'];
 
   const { getItem, setItem } = useStorage();
   const [symbols, setSymbols] = useState(defaultSymbols);
@@ -937,7 +976,12 @@ function Dashboard() {
       if (Array.isArray(wc) && wc.length > 0) setWorldClocks(wc);
       if (Array.isArray(so) && so.length > 0) {
         const filtered = so.filter((id) => id !== 'todo-list');
-        if (filtered.length > 0) setSectionOrder(filtered);
+        if (filtered.length > 0) {
+          const withQuickLinks = filtered.includes('quick-links')
+            ? filtered
+            : ['quick-links', ...filtered];
+          setSectionOrder(withQuickLinks);
+        }
       }
     });
   }, [getItem]);
@@ -1132,6 +1176,48 @@ function Dashboard() {
   // Render sections based on order
   const renderSection = (sectionId) => {
     switch (sectionId) {
+      case 'quick-links':
+        return (
+          <SortableSection key={sectionId} id={sectionId}>
+            <div>
+              <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
+                Quick Links
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                {DASHBOARD_QUICK_LINKS.map((link) => {
+                  const { Icon } = link;
+                  const iconIsLightOnDark = link.id === 'x';
+                  return (
+                    <a
+                      key={link.id}
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Open ${link.label} in a new tab`}
+                      className="group flex flex-col items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-3 text-center transition-colors hover:border-sky-400 dark:hover:border-sky-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 min-h-[44px]"
+                    >
+                      <span
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${link.iconBg} shadow-sm`}
+                      >
+                        <Icon
+                          className={`h-5 w-5 ${iconIsLightOnDark ? 'text-white dark:text-gray-900' : 'text-white'}`}
+                          aria-hidden
+                        />
+                      </span>
+                      <span className="text-xs font-semibold text-gray-900 dark:text-white leading-tight">
+                        {link.label}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-sky-500 group-hover:text-sky-400 dark:text-sky-400">
+                        <ExternalLink className="h-3 w-3" aria-hidden />
+                        Open
+                      </span>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          </SortableSection>
+        );
       case 'world-clocks':
         return (
           <SortableSection key={sectionId} id={sectionId}>

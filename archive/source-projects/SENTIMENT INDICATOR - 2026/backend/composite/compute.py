@@ -1,4 +1,5 @@
 """Compute composite score from latest index snapshots and optional text sentiment."""
+from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from typing import Any
