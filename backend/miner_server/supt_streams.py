@@ -16,11 +16,13 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from config import normalize_search_mode, supt_data_dir, supt_logging_enabled, supt_sample_every
+from log_utils import prune_archives, rotate_file_if_oversized, read_tail_lines
 
 _STREAM_A_NAME = "nonce_hash_stream.csv"
 _STREAM_B_NAME = "block_cadence.csv"
 _SEARCH_MODE_LOG = "search_mode.jsonl"
-_MAX_FILE_BYTES = 50 * 1024 * 1024
+_MAX_FILE_BYTES = 10 * 1024 * 1024
+_MAX_ROTATED_FILES = 2
 _RING_MAX = 512
 
 _lock = threading.Lock()
@@ -93,18 +95,15 @@ def _ensure_data_dir() -> None:
 def _maybe_rotate(path: str) -> None:
     if not os.path.isfile(path):
         return
-    try:
-        if os.path.getsize(path) <= _MAX_FILE_BYTES:
-            return
-    except OSError:
-        return
-    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    base, ext = os.path.splitext(path)
-    rotated = f"{base}.{ts}{ext}"
-    try:
-        os.rename(path, rotated)
-    except OSError:
-        pass
+    rotate_file_if_oversized(
+        path,
+        max_bytes=_MAX_FILE_BYTES,
+        keep_archives=_MAX_ROTATED_FILES,
+    )
+    directory = os.path.dirname(path) or "."
+    base_name = os.path.basename(path)
+    name, ext = os.path.splitext(base_name)
+    prune_archives(directory, f"{name}.", ext, keep=_MAX_ROTATED_FILES)
 
 
 def _write_header_if_new(path: str, header: list[str]) -> None:
@@ -320,17 +319,20 @@ def tail_csv(which: str, lines: int = 5) -> list[list[str]]:
         return []
     try:
         with open(path, "r", encoding="utf-8") as f:
-            all_rows = list(csv.reader(f))
+            header = next(csv.reader([f.readline()]), None)
+        if not header:
+            return []
+        tail_raw = read_tail_lines(path, max(lines + 1, 2))
+        parsed = list(csv.reader(tail_raw))
+        data = [row for row in parsed if row and row != header]
+        return data[-lines:]
     except OSError:
         return []
-    if len(all_rows) <= 1:
-        return []
-    data = all_rows[1:]
-    return data[-lines:]
 
 
 def read_column_tail(which: str, column: str, max_rows: Optional[int] = None) -> list[float]:
-    """Read numeric column from stream CSV (last max_rows values)."""
+    """Read numeric column from stream CSV (last max_rows values, bounded)."""
+    cap = max_rows if max_rows is not None and max_rows > 0 else _RING_MAX
     path = _stream_a_path() if which == "a" else _stream_b_path()
     if not os.path.isfile(path):
         return []
@@ -339,7 +341,7 @@ def read_column_tail(which: str, column: str, max_rows: Optional[int] = None) ->
             reader = csv.DictReader(f)
             if reader.fieldnames is None or column not in reader.fieldnames:
                 return []
-            vals: list[float] = []
+            vals: deque[float] = deque(maxlen=cap)
             for row in reader:
                 raw = row.get(column, "").strip()
                 if not raw:
@@ -350,9 +352,7 @@ def read_column_tail(which: str, column: str, max_rows: Optional[int] = None) ->
                     vals.append(float(raw))
                 except ValueError:
                     continue
-            if max_rows is not None and max_rows > 0:
-                return vals[-max_rows:]
-            return vals
+            return list(vals)
     except OSError:
         return []
 

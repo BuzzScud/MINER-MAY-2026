@@ -11,8 +11,11 @@ import threading
 from datetime import datetime, timezone
 from typing import List, Optional
 
+from log_utils import rotate_file_if_oversized
+
 _here = os.path.dirname(os.path.abspath(__file__))
 _DEFAULT_PATH = os.path.join(_here, "data", "nonces_tried.json")
+_MAX_NONCE_LOG_BYTES = 5 * 1024 * 1024
 _LOCK = threading.Lock()
 _SAMPLE_FIRST = 20
 _SAMPLE_LAST = 20
@@ -77,6 +80,7 @@ def log_nonce_round(
         if dirpath and not os.path.isdir(dirpath):
             os.makedirs(dirpath, exist_ok=True)
         with _LOCK:
+            rotate_file_if_oversized(path, max_bytes=_MAX_NONCE_LOG_BYTES)
             with open(path, "a", encoding="utf-8") as f:
                 f.write(line)
     except (OSError, IOError):

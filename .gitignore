@@ -36,4 +36,6 @@ backend/miner_server/data/*.csv
 backend/miner_server/data/*.jsonl
 backend/miner_server/data/lifetime_stats.json
 backend/miner_server/data/nonces_tried.json
+backend/miner_server/data/mining_activity.log
+backend/miner_server/data/search_mode.jsonl
 !backend/miner_server/data/.gitkeep

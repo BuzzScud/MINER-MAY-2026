@@ -9,6 +9,7 @@ export BTC_USE_C_CANDIDATES=0
 export BTC_DISABLE_RECOVERY=1
 echo "=== Miner Test Suite ==="
 python3 test_engine_self_test.py
+python3 test_log_utils.py
 python3 test_supt_streams.py
 python3 test_supt_probe.py
 python3 test_search_mode_config.py

@@ -39,6 +39,7 @@ from address import address_to_script_pubkey
 from backtest_last_100_blocks import _run_backtest
 from engine_self_test import run_self_test
 import supt_streams
+from log_utils import read_tail_lines, refresh_file_if_oversized
 from supt_probe import run_probe_report, run_compare_report, run_z0_probe_report
 from thesis_mining import (
     get_base_nonce_source,
@@ -96,6 +97,8 @@ _network_activity_lock = threading.Lock()
 # Optional mining activity log file (JSONL). Default path when unset; explicit "0"/"off" disables.
 _activity_log_lock = threading.Lock()
 _DEFAULT_ACTIVITY_LOG_PATH = os.path.join(_here, "data", "mining_activity.log")
+_ACTIVITY_LOG_MAX_BYTES = 500 * 1024 * 1024
+_ACTIVITY_LOG_WRITE_INTERVAL_SEC = 30
 
 
 def _resolve_activity_log_path() -> Optional[str]:
@@ -587,11 +590,13 @@ def _mining_worker(config: MinerConfig) -> None:
 
     activity_log_path = _resolve_activity_log_path()
     activity_log_file_holder = [None]
+    last_activity_write = [0.0]
     if activity_log_path:
         try:
             parent = os.path.dirname(activity_log_path)
             if parent and not os.path.isdir(parent):
                 os.makedirs(parent, exist_ok=True)
+            refresh_file_if_oversized(activity_log_path, max_bytes=_ACTIVITY_LOG_MAX_BYTES)
             activity_log_file_holder[0] = open(activity_log_path, "a", encoding="utf-8")
         except OSError:
             activity_log_file_holder[0] = None
@@ -612,7 +617,8 @@ def _mining_worker(config: MinerConfig) -> None:
             _last_stats_log[0] = now
             _mining_log_append(f"Hashrate: {hashrate:.1f} H/s, Hashes: {total_hashes}")
         f = activity_log_file_holder[0]
-        if f is not None:
+        if f is not None and now - last_activity_write[0] >= _ACTIVITY_LOG_WRITE_INTERVAL_SEC:
+            last_activity_write[0] = now
             line = json.dumps({
                 "ts": datetime.now().isoformat(),
                 "hashes": total_hashes,
@@ -621,6 +627,14 @@ def _mining_worker(config: MinerConfig) -> None:
             }) + "\n"
             with _activity_log_lock:
                 try:
+                    if refresh_file_if_oversized(activity_log_path, max_bytes=_ACTIVITY_LOG_MAX_BYTES):
+                        if activity_log_file_holder[0] is not None:
+                            try:
+                                activity_log_file_holder[0].close()
+                            except OSError:
+                                pass
+                        activity_log_file_holder[0] = open(activity_log_path, "a", encoding="utf-8")
+                        f = activity_log_file_holder[0]
                     f.write(line)
                     f.flush()
                 except OSError:
@@ -843,9 +857,7 @@ def _read_recent_activity_log_lines(max_lines: int = 50) -> list:
         return []
     out: list = []
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-        for line in lines[-max_lines:]:
+        for line in read_tail_lines(path, max_lines):
             line = line.strip()
             if not line:
                 continue
@@ -853,7 +865,7 @@ def _read_recent_activity_log_lines(max_lines: int = 50) -> list:
                 out.append(json.loads(line))
             except (json.JSONDecodeError, ValueError):
                 continue
-    except (OSError, IOError):
+    except OSError:
         pass
     return out
 
